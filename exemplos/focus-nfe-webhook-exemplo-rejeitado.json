@@ -1,0 +1,7 @@
+{
+  "ref": "PEDIDO-12345-1708765200000",
+  "status": "rejeitado",
+  "status_sefaz": "204",
+  "mensagem_sefaz": "Rejeicao: Duplicidade de NF-e",
+  "mensagem": "Nota fiscal rejeitada pela SEFAZ"
+}

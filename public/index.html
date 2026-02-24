@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Painel Fiscal – Emissão NFe</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      margin: 0;
+      padding: 24px;
+      background: #161618;
+      color: #fafafa;
+      min-height: 100vh;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-bottom: 24px;
+      color: #fafafa;
+    }
+    .card {
+      background: #1D1D20;
+      border-radius: 8px;
+      padding: 24px;
+      margin-bottom: 20px;
+      border: 1px solid #27272A;
+    }
+    .card h2 {
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin: 0 0 16px 0;
+      color: #fafafa;
+    }
+    .form-row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .form-group label {
+      font-size: 0.85rem;
+      color: #a1a1aa;
+    }
+    select {
+      min-width: 220px;
+      padding: 10px 12px;
+      border: 1px solid #27272A;
+      border-radius: 8px;
+      background: #161618;
+      color: #fafafa;
+      font-size: 0.95rem;
+    }
+    select:focus {
+      outline: none;
+      border-color: #38bdf8;
+    }
+    input[type="number"] {
+      width: 120px;
+      padding: 10px 12px;
+      border: 1px solid #27272A;
+      border-radius: 8px;
+      background: #161618;
+      color: #fafafa;
+      font-size: 1rem;
+    }
+    input[type="number"]:focus {
+      outline: none;
+      border-color: #38bdf8;
+    }
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    button.primary {
+      background: #0ea5e9;
+      color: #fff;
+    }
+    button.primary:hover { background: #0284c7; }
+    button.primary:disabled {
+      background: #475569;
+      cursor: not-allowed;
+    }
+    button.small {
+      padding: 6px 12px;
+      font-size: 0.85rem;
+      background: #334155;
+      color: #e2e8f0;
+    }
+    button.small:hover { background: #475569; }
+    .message {
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+    }
+    .message.success { background: #14532d; color: #86efac; }
+    .message.error { background: #7f1d1d; color: #fca5a5; }
+    .message.info { background: #1e3a5f; color: #93c5fd; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+    #invoiceList table { display: block; }
+    #invoiceList table thead, #invoiceList table tbody { display: block; }
+    #invoiceList table tr {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+    }
+    #invoiceList table th,
+    #invoiceList table td {
+      flex: 1 1 0;
+      min-width: 0;
+    }
+    #invoiceList table th:nth-child(1), #invoiceList table td:nth-child(1) { flex: 1 1 0; }
+    #invoiceList table th:nth-child(2), #invoiceList table td:nth-child(2) { flex: 1 1 0; }
+    #invoiceList table th:nth-child(3), #invoiceList table td:nth-child(3) { flex: 1 1 0; }
+    #invoiceList table th:nth-child(4), #invoiceList table td:nth-child(4) { flex: 1 1 0; }
+    #invoiceList table th:nth-child(5), #invoiceList table td:nth-child(5) { flex: 0 0 auto; min-width: 100px; }
+    #invoiceList table td:nth-child(5) { display: flex; justify-content: flex-end; }
+    th, td {
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid #27272A;
+    }
+    th { color: #a1a1aa; font-weight: 500; }
+    .status {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 500;
+    }
+    .status.AUTORIZADO { background: #14532d; color: #86efac; }
+    .status.PROCESSANDO, .status.PENDENTE { background: #78350f; color: #fcd34d; }
+    .status.REJEITADO, .status.ERRO { background: #7f1d1d; color: #fca5a5; }
+    .status.clickable { cursor: pointer; text-decoration: underline; }
+    .status.clickable:hover { opacity: 0.9; }
+    .actions { display: flex; justify-content: flex-end; gap: 8px; }
+    .empty { color: #a1a1aa; padding: 24px; text-align: center; }
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: #1D1D20;
+      border-radius: 8px;
+      border: 1px solid #27272A;
+      max-width: 640px;
+      width: 100%;
+      max-height: 90vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      border-bottom: 1px solid #27272A;
+    }
+    .modal-header h3 { margin: 0; font-size: 1.1rem; color: #fafafa; }
+    .modal-close {
+      background: none;
+      border: none;
+      color: #a1a1aa;
+      font-size: 1.25rem;
+      cursor: pointer;
+      padding: 4px;
+      line-height: 1;
+    }
+    .modal-close:hover { color: #fafafa; }
+    .modal-body {
+      padding: 20px;
+      overflow: auto;
+    }
+    .modal-body table { font-size: 0.85rem; }
+    .modal-body .situacao-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+    .modal-body .situacao-badge.ERRO,
+    .modal-body .situacao-badge.REJEITADO,
+    .modal-body .situacao-badge.DENEGADA { background: #7f1d1d; color: #fca5a5; }
+    .modal-body .situacao-badge.AUTORIZADO { background: #14532d; color: #86efac; }
+    .modal-body .situacao-badge.PROCESSANDO,
+    .modal-body .situacao-badge.PENDENTE { background: #78350f; color: #fcd34d; }
+    .btn-lupa {
+      background: none;
+      border: none;
+      color: #a1a1aa;
+      cursor: pointer;
+      padding: 4px 8px;
+      font-size: 1rem;
+      line-height: 1;
+    }
+    .btn-lupa:hover { color: #38bdf8; }
+    .modal.modal-chamada { max-width: 720px; }
+    .modal-body pre {
+      margin: 0;
+      padding: 16px;
+      background: #161618;
+      border-radius: 8px;
+      overflow: auto;
+      font-size: 0.8rem;
+      line-height: 1.4;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Painel Fiscal – Emissão NFe</h1>
+
+    <div class="card">
+      <h2>Emitir NFe</h2>
+      <p style="font-size: 0.85rem; color: #a1a1aa; margin: 0 0 16px 0;">Se o pedido não tiver empresa ou natureza no cadastro, selecione abaixo.</p>
+      <div class="form-row" style="align-items: flex-end;">
+        <div class="form-group">
+          <label for="empresaId">Empresa</label>
+          <select id="empresaId">
+            <option value="">— Selecionar —</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="naturezaId">Natureza de operação</label>
+          <select id="naturezaId">
+            <option value="">— Selecionar —</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="pedidoId">ID do pedido</label>
+          <input type="number" id="pedidoId" min="1" placeholder="Ex: 1">
+        </div>
+        <button class="primary" id="btnEmitir">Emitir NFe</button>
+        <button type="button" class="primary" id="btnVerificarChamada" style="background: #475569;">Verificar chamada</button>
+      </div>
+      <div id="emitirMessage"></div>
+    </div>
+
+    <div class="card">
+      <h2>Últimas notas</h2>
+      <p style="font-size: 0.8rem; color: #94a3b8; margin: -8px 0 10px 0;">Notas travadas em &quot;Processando&quot;? Clique em <strong>Sincronizar status</strong> para consultar a Focus NFe.</p>
+      <button type="button" class="small" id="btnSync" style="margin-bottom: 12px;">Sincronizar status</button>
+      <div id="invoiceList">
+        <div class="empty">Carregando…</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modalSituacoes">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Situações NF's</h3>
+        <button type="button" class="modal-close" id="modalClose" aria-label="Fechar">&times;</button>
+      </div>
+      <div class="modal-body">
+        <table id="modalTable">
+          <thead>
+            <tr><th>Data</th><th>Descrição</th><th>Situação</th></tr>
+          </thead>
+          <tbody id="modalTableBody"></tbody>
+        </table>
+        <div class="empty" id="modalEmpty" style="display:none;">Nenhuma situação registrada.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modalChamada">
+    <div class="modal modal-chamada">
+      <div class="modal-header">
+        <h3>Chamada enviada à API (Focus NFe)</h3>
+        <button type="button" class="modal-close" id="modalChamadaClose" aria-label="Fechar">&times;</button>
+      </div>
+      <div class="modal-body">
+        <pre id="modalChamadaPre"></pre>
+        <div class="empty" id="modalChamadaEmpty" style="display:none;"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modalPreviewChamada">
+    <div class="modal modal-chamada">
+      <div class="modal-header">
+        <h3>JSON que será enviado à API (Focus NFe)</h3>
+        <button type="button" class="modal-close" id="modalPreviewChamadaClose" aria-label="Fechar">&times;</button>
+      </div>
+      <div class="modal-body">
+        <pre id="modalPreviewChamadaPre"></pre>
+        <div class="empty" id="modalPreviewChamadaEmpty" style="display:none;"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API = ''; // same origin
+
+    function showMessage(elId, text, type) {
+      const el = document.getElementById(elId);
+      el.textContent = text;
+      el.className = 'message ' + (type || 'info');
+      el.style.display = 'block';
+    }
+
+    function openModalSituacoes(invoiceId) {
+      const overlay = document.getElementById('modalSituacoes');
+      const tbody = document.getElementById('modalTableBody');
+      const empty = document.getElementById('modalEmpty');
+      overlay.classList.add('open');
+      tbody.innerHTML = '';
+      empty.style.display = 'none';
+      fetch(API + '/fiscal/' + invoiceId + '/situacoes')
+        .then(function (res) { return res.json(); })
+        .then(function (list) {
+          if (!Array.isArray(list) || !list.length) {
+            empty.style.display = 'block';
+            return;
+          }
+          list.forEach(function (s) {
+            const tr = document.createElement('tr');
+            const sitClass = (s.situacao || '').toUpperCase().replace(/\s/g, '_');
+            tr.innerHTML =
+              '<td>' + (s.data || '-') + '</td>' +
+              '<td>' + (s.descricao || '-') + '</td>' +
+              '<td><span class="situacao-badge ' + sitClass + '">' + (s.situacao || '-') + '</span></td>';
+            tbody.appendChild(tr);
+          });
+        })
+        .catch(function () {
+          empty.textContent = 'Erro ao carregar situações.';
+          empty.style.display = 'block';
+        });
+    }
+
+    document.getElementById('modalClose').addEventListener('click', function () {
+      document.getElementById('modalSituacoes').classList.remove('open');
+    });
+    document.getElementById('modalSituacoes').addEventListener('click', function (e) {
+      if (e.target === this) this.classList.remove('open');
+    });
+
+    function openModalChamada(invoiceId) {
+      const overlay = document.getElementById('modalChamada');
+      const pre = document.getElementById('modalChamadaPre');
+      const empty = document.getElementById('modalChamadaEmpty');
+      overlay.classList.add('open');
+      pre.style.display = 'block';
+      pre.textContent = 'Carregando…';
+      empty.style.display = 'none';
+      fetch(API + '/fiscal/' + invoiceId + '/chamada')
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+          if (data && data.message && Object.keys(data).length === 1) {
+            pre.style.display = 'none';
+            empty.textContent = data.message;
+            empty.style.display = 'block';
+            return;
+          }
+          pre.style.display = 'block';
+          empty.style.display = 'none';
+          pre.textContent = JSON.stringify(data, null, 2);
+        })
+        .catch(function () {
+          pre.style.display = 'none';
+          empty.textContent = 'Erro ao carregar a chamada.';
+          empty.style.display = 'block';
+        });
+    }
+
+    document.getElementById('modalChamadaClose').addEventListener('click', function () {
+      document.getElementById('modalChamada').classList.remove('open');
+    });
+    document.getElementById('modalChamada').addEventListener('click', function (e) {
+      if (e.target === this) this.classList.remove('open');
+    });
+
+    function openModalPreviewChamada() {
+      const pedidoId = document.getElementById('pedidoId').value.trim();
+      const empresaId = document.getElementById('empresaId').value.trim();
+      const naturezaId = document.getElementById('naturezaId').value.trim();
+      const overlay = document.getElementById('modalPreviewChamada');
+      const pre = document.getElementById('modalPreviewChamadaPre');
+      const empty = document.getElementById('modalPreviewChamadaEmpty');
+      overlay.classList.add('open');
+      pre.style.display = 'block';
+      pre.textContent = 'Carregando…';
+      empty.style.display = 'none';
+      if (!pedidoId || parseInt(pedidoId, 10) < 1) {
+        pre.style.display = 'none';
+        empty.textContent = 'Informe o ID do pedido para verificar a chamada.';
+        empty.style.display = 'block';
+        return;
+      }
+      const body = { pedidoId: parseInt(pedidoId, 10) };
+      if (empresaId) body.empresa_id = parseInt(empresaId, 10);
+      if (naturezaId) body.natureza_operacao_id = parseInt(naturezaId, 10);
+      fetch(API + '/fiscal/preview-chamada', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+        .then(function (res) { return res.json().then(function (data) { return { res: res, data: data }; }); })
+        .then(function (result) {
+          if (!result.res.ok) {
+            pre.style.display = 'none';
+            empty.textContent = result.data.message || result.data.detail || 'Erro ao montar a chamada.';
+            empty.style.display = 'block';
+            return;
+          }
+          pre.style.display = 'block';
+          empty.style.display = 'none';
+          pre.textContent = JSON.stringify(result.data, null, 2);
+        })
+        .catch(function (e) {
+          pre.style.display = 'none';
+          empty.textContent = 'Erro de rede: ' + (e.message || 'Erro ao carregar.');
+          empty.style.display = 'block';
+        });
+    }
+
+    document.getElementById('modalPreviewChamadaClose').addEventListener('click', function () {
+      document.getElementById('modalPreviewChamada').classList.remove('open');
+    });
+    document.getElementById('modalPreviewChamada').addEventListener('click', function (e) {
+      if (e.target === this) this.classList.remove('open');
+    });
+    document.getElementById('btnVerificarChamada').addEventListener('click', openModalPreviewChamada);
+
+    async function emitir() {
+      const pedidoId = document.getElementById('pedidoId').value.trim();
+      const empresaId = document.getElementById('empresaId').value.trim();
+      const naturezaId = document.getElementById('naturezaId').value.trim();
+      const btn = document.getElementById('btnEmitir');
+      const msgEl = document.getElementById('emitirMessage');
+      if (!pedidoId || parseInt(pedidoId, 10) < 1) {
+        showMessage('emitirMessage', 'Informe um ID de pedido válido.', 'error');
+        return;
+      }
+      btn.disabled = true;
+      msgEl.style.display = 'none';
+      try {
+        const body = {};
+        if (empresaId) body.empresa_id = parseInt(empresaId, 10);
+        if (naturezaId) body.natureza_operacao_id = parseInt(naturezaId, 10);
+        const res = await fetch(API + '/fiscal/emitir/' + pedidoId, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          showMessage('emitirMessage', data.message || 'Erro ao emitir.', 'error');
+          return;
+        }
+        showMessage(
+          'emitirMessage',
+          data.mensagem + ' Invoice: ' + data.invoiceId + (data.focus_id ? ' | Ref: ' + data.focus_id : ''),
+          'success'
+        );
+        loadInvoices();
+      } catch (e) {
+        showMessage('emitirMessage', 'Erro de rede: ' + e.message, 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function loadEmpresas() {
+      const sel = document.getElementById('empresaId');
+      try {
+        const res = await fetch(API + '/fiscal/empresas');
+        const data = await res.json();
+        if (!res.ok) {
+          const msg = (data && (data.detail || data.message)) || res.status;
+          sel.innerHTML = '<option value="">Erro: ' + msg + '</option>';
+          return;
+        }
+        const list = Array.isArray(data) ? data : [];
+        sel.innerHTML = '<option value="">— Selecionar —</option>' +
+          list.map(function (e) {
+            return '<option value="' + e.id + '">' + (e.razao_social || '') + '</option>';
+          }).join('');
+      } catch (e) {
+        sel.innerHTML = '<option value="">Erro de rede</option>';
+      }
+    }
+
+    async function loadNaturezas() {
+      const sel = document.getElementById('naturezaId');
+      try {
+        const res = await fetch(API + '/fiscal/naturezas');
+        const data = await res.json();
+        if (!res.ok) {
+          const msg = (data && (data.detail || data.message)) || res.status;
+          sel.innerHTML = '<option value="">Erro: ' + msg + '</option>';
+          return;
+        }
+        const list = Array.isArray(data) ? data : [];
+        sel.innerHTML = '<option value="">— Selecionar —</option>' +
+          list.map(function (n) {
+            return '<option value="' + n.id + '">' + n.descricao + ' (ID ' + n.id + ')</option>';
+          }).join('');
+      } catch (e) {
+        sel.innerHTML = '<option value="">Erro de rede</option>';
+      }
+    }
+
+    async function loadInvoices() {
+      const wrap = document.getElementById('invoiceList');
+      try {
+        const res = await fetch(API + '/fiscal/invoices');
+        const list = await res.json();
+        if (!res.ok) {
+          wrap.innerHTML = '<div class="empty">Erro ao carregar lista.</div>';
+          return;
+        }
+        if (!list.length) {
+          wrap.innerHTML = '<div class="empty">Nenhuma nota emitida ainda.</div>';
+          return;
+        }
+        const base = window.location.origin;
+        wrap.innerHTML =
+          '<table><thead><tr><th>Pedido</th><th>NF</th><th>Status</th><th>Data</th><th></th></tr></thead><tbody>' +
+          list.map(function (inv) {
+            const date = inv.created_at ? new Date(inv.created_at).toLocaleString('pt-BR') : '-';
+            const canDownload = inv.status === 'AUTORIZADO';
+            return (
+              '<tr>' +
+              '<td>' + inv.pedido_id + '</td>' +
+              '<td>' + (inv.numero_nf != null ? inv.numero_nf : '-') + '</td>' +
+              '<td><span class="status ' + inv.status + ' clickable" data-invoice-id="' + inv.id + '" role="button" tabindex="0" title="Ver situações">' + inv.status + '</span></td>' +
+              '<td>' + date + '</td>' +
+              '<td class="actions">' +
+              (canDownload
+                ? '<a href="' + base + '/fiscal/' + inv.id + '/xml" target="_blank" rel="noopener"><button class="small">XML</button></a>' +
+                  '<a href="' + base + '/fiscal/' + inv.id + '/pdf" target="_blank" rel="noopener"><button class="small">PDF</button></a>'
+                : '') +
+              ' <button type="button" class="btn-lupa btn-ver-chamada" data-invoice-id="' + inv.id + '" title="Ver chamada enviada à API">🔍</button>' +
+              '</td></tr>'
+            );
+          }).join('') +
+          '</tbody></table>';
+        wrap.querySelectorAll('.status').forEach(function (el) {
+          el.addEventListener('click', function () {
+            const id = el.getAttribute('data-invoice-id');
+            if (id) openModalSituacoes(id);
+          });
+        });
+        wrap.querySelectorAll('.btn-ver-chamada').forEach(function (el) {
+          el.addEventListener('click', function () {
+            const id = el.getAttribute('data-invoice-id');
+            if (id) openModalChamada(id);
+          });
+        });
+      } catch (e) {
+        wrap.innerHTML = '<div class="empty">Erro: ' + e.message + '</div>';
+      }
+    }
+
+    document.getElementById('btnEmitir').addEventListener('click', emitir);
+    document.getElementById('pedidoId').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') emitir();
+    });
+
+    document.getElementById('btnSync').addEventListener('click', async function () {
+      const btn = document.getElementById('btnSync');
+      btn.disabled = true;
+      btn.textContent = 'Sincronizando…';
+      try {
+        const res = await fetch(API + '/fiscal/sync', { method: 'POST' });
+        const data = await res.json();
+        if (data.atualizados > 0 || data.erro > 0) {
+          showMessage('msg', 'Sincronização: ' + data.atualizados + ' atualizada(s), ' + data.erro + ' erro(s).', data.atualizados > 0 ? 'success' : 'info');
+        }
+        loadInvoices();
+      } catch (e) {
+        showMessage('msg', 'Erro ao sincronizar: ' + e.message, 'error');
+      }
+      btn.disabled = false;
+      btn.textContent = 'Sincronizar status';
+    });
+
+    loadEmpresas();
+    loadNaturezas();
+    loadInvoices();
+  </script>
+</body>
+</html>

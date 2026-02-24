@@ -1,0 +1,206 @@
+{
+  "name": "Focus NFe - Emissão e Consulta NFe (BH → Brasil/Mundo)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "emitir-nfe",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook - Receber pedido",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 300],
+      "webhookId": "focus-nfe-emitir"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepara referência única e dados para a Focus NFe\n// Entrada: body do webhook com dados do pedido/destinatário\nconst body = $input.first().json.body || $input.first().json;\nconst ref = body.referencia || body.pedido_id || `NFE-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;\n\n// Dados do emitente (empresa em BH - ajuste com seus dados reais)\nconst emitente = {\n  cnpj_emitente: body.cnpj_emitente || process.env.FOCUS_NFE_CNPJ_EMITENTE || \"\",\n  nome_emitente: body.nome_emitente || \"SUA EMPRESA LTDA\",\n  nome_fantasia_emitente: body.nome_fantasia_emitente || \"SUA EMPRESA\",\n  logradouro_emitente: body.logradouro_emitente || \"Rua Exemplo\",\n  numero_emitente: body.numero_emitente || \"100\",\n  bairro_emitente: body.bairro_emitente || \"Centro\",\n  municipio_emitente: body.municipio_emitente || \"Belo Horizonte\",\n  uf_emitente: body.uf_emitente || \"MG\",\n  cep_emitente: body.cep_emitente || \"30130000\",\n  inscricao_estadual_emitente: body.inscricao_estadual_emitente || \"\",\n  telefone_emitente: body.telefone_emitente || \"\"\n};\n\n// Destinatário (Brasil ou exterior - vem do pedido)\nconst destinatario = {\n  nome_destinatario: body.nome_destinatario,\n  cpf_destinatario: body.cpf_destinatario || undefined,\n  cnpj_destinatario: body.cnpj_destinatario || undefined,\n  inscricao_estadual_destinatario: body.inscricao_estadual_destinatario || \"ISENTO\",\n  logradouro_destinatario: body.logradouro_destinatario,\n  numero_destinatario: body.numero_destinatario,\n  bairro_destinatario: body.bairro_destinatario,\n  municipio_destinatario: body.municipio_destinatario,\n  uf_destinatario: body.uf_destinatario || \"EX\",\n  pais_destinatario: body.pais_destinatario || \"Brasil\",\n  cep_destinatario: body.cep_destinatario || \"00000000\",\n  telefone_destinatario: body.telefone_destinatario || \"\"\n};\n\n// Data/hora atual em formato Focus NFe\nconst now = new Date().toISOString().slice(0, 19);\n\n// Monta o payload da NFe (campos obrigatórios + itens)\nconst nfePayload = {\n  data_emissao: body.data_emissao || now,\n  data_entrada_saida: body.data_entrada_saida || now,\n  natureza_operacao: body.natureza_operacao || \"Venda de mercadoria\",\n  forma_pagamento: body.forma_pagamento || \"0\",\n  tipo_documento: body.tipo_documento || \"1\",\n  finalidade_emissao: body.finalidade_emissao || \"1\",\n  ...emitente,\n  ...destinatario,\n  valor_frete: String(body.valor_frete ?? 0),\n  valor_seguro: String(body.valor_seguro ?? 0),\n  valor_total: String(body.valor_total),\n  valor_produtos: String(body.valor_produtos),\n  modalidade_frete: body.modalidade_frete || \"0\",\n  items: Array.isArray(body.items) ? body.items.map((item, i) => ({\n    numero_item: String(i + 1),\n    codigo_produto: item.codigo_produto || String(i + 1),\n    descricao: item.descricao,\n    cfop: item.cfop || \"5102\",\n    unidade_comercial: item.unidade_comercial || \"UN\",\n    quantidade_comercial: String(item.quantidade_comercial),\n    valor_unitario_comercial: String(item.valor_unitario_comercial),\n    valor_unitario_tributavel: String(item.valor_unitario_tributavel || item.valor_unitario_comercial),\n    unidade_tributavel: item.unidade_tributavel || \"UN\",\n    codigo_ncm: item.codigo_ncm || \"00000000\",\n    quantidade_tributavel: String(item.quantidade_tributavel || item.quantidade_comercial),\n    valor_bruto: String(item.valor_bruto || (item.quantidade_comercial * item.valor_unitario_comercial)),\n    icms_situacao_tributaria: item.icms_situacao_tributaria || \"400\",\n    icms_origem: String(item.icms_origem ?? 0),\n    pis_situacao_tributaria: item.pis_situacao_tributaria || \"07\",\n    cofins_situacao_tributaria: item.cofins_situacao_tributaria || \"07\"\n  })) : []\n};\n\nreturn [{ json: { referencia: ref.replace(/[^a-zA-Z0-9_-]/g, \"_\"), ambiente: body.ambiente || \"homologacao\", nfePayload } }];"
+      },
+      "id": "preparar-payload",
+      "name": "Preparar payload NFe",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [220, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://{{ $json.ambiente === 'producao' ? 'api' : 'homologacao' }.focusnfe.com.br/v2/nfe?ref={{ $json.referencia }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.nfePayload) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "id": "http-emitir-nfe",
+      "name": "Focus NFe - Emitir NFe",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "FOCUS_NFE_CREDENTIAL_ID",
+          "name": "Focus NFe API"
+        }
+      },
+      "notesInFlow": true,
+      "notes": "POST /v2/nfe?ref=REFERENCIA. Ambiente via body.ambiente (homologacao | producao)."
+    },
+    {
+      "parameters": {
+        "amount": 45,
+        "unit": "seconds"
+      },
+      "id": "wait-processamento",
+      "name": "Aguardar processamento SEFAZ",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [660, 300],
+      "notesInFlow": true,
+      "notes": "NFe é assíncrona; normalmente < 1 min. Use webhook Focus NFe para evitar polling."
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://{{ $('Preparar payload NFe').item.json.ambiente === 'producao' ? 'api' : 'homologacao' }.focusnfe.com.br/v2/nfe/{{ $('Preparar payload NFe').item.json.referencia }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false
+            }
+          }
+        }
+      },
+      "id": "http-consultar-nfe",
+      "name": "Focus NFe - Consultar status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "FOCUS_NFE_CREDENTIAL_ID",
+          "name": "Focus NFe API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-autorizado",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "autorizado",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-status-autorizado",
+      "name": "Status = autorizado?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1100, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { ok: true, mensagem: 'NFe autorizada', referencia: $('Preparar payload NFe').item.json.referencia, status: $json.status, numero: $json.numero, cnpj_emitente: $json.cnpj_emitente, chave_nfe: $json.chave_nfe } }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "resposta-sucesso",
+      "name": "Resposta - NFe autorizada",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1320, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { ok: false, mensagem: 'NFe não autorizada ou em processamento', referencia: $('Preparar payload NFe').item.json.referencia, status: $json.status || 'erro', mensagem_erro: $json.mensagem || $json.codigo } }}",
+        "options": {
+          "responseCode": 422
+        }
+      },
+      "id": "resposta-erro",
+      "name": "Resposta - Erro / em processamento",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1320, 400]
+    }
+  ],
+  "connections": {
+    "Webhook - Receber pedido": {
+      "main": [
+        [{ "node": "Preparar payload NFe", "type": "main", "index": 0 }]
+      ]
+    },
+    "Preparar payload NFe": {
+      "main": [
+        [{ "node": "Focus NFe - Emitir NFe", "type": "main", "index": 0 }]
+      ]
+    },
+    "Focus NFe - Emitir NFe": {
+      "main": [
+        [{ "node": "Aguardar processamento SEFAZ", "type": "main", "index": 0 }]
+      ]
+    },
+    "Aguardar processamento SEFAZ": {
+      "main": [
+        [{ "node": "Focus NFe - Consultar status", "type": "main", "index": 0 }]
+      ]
+    },
+    "Focus NFe - Consultar status": {
+      "main": [
+        [
+          { "node": "Status = autorizado?", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Status = autorizado?": {
+      "main": [
+        [{ "node": "Resposta - NFe autorizada", "type": "main", "index": 0 }],
+        [{ "node": "Resposta - Erro / em processamento", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    { "name": "Focus NFe" },
+    { "name": "NFe" },
+    { "name": "Fiscal" }
+  ],
+  "triggerCount": 1,
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "versionId": "1"
+}

@@ -1,0 +1,11 @@
+{
+  "ref": "PEDIDO-12345-1708765200000",
+  "status": "autorizado",
+  "status_sefaz": "100",
+  "mensagem_sefaz": "Autorizado o uso da NF-e",
+  "chave_nfe": "31250512345678000199550010000012341123456789",
+  "numero": 1234,
+  "caminho_xml_nota_fiscal": "https://api.focusnfe.com.br/v2/nfe/PEDIDO-12345-1708765200000.xml",
+  "caminho_pdf_nota_fiscal": "https://api.focusnfe.com.br/v2/nfe/PEDIDO-12345-1708765200000.pdf",
+  "mensagem": "NF-e autorizada com sucesso"
+}
