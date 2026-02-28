@@ -12,7 +12,7 @@ import {
 export class FiscalSupabaseService implements OnModuleDestroy {
   private client: SupabaseClient | null = null;
 
-  constructor(private config: ConfigService) {}
+  constructor(private config: ConfigService) { }
 
   getClient(): SupabaseClient {
     if (!this.client) {
@@ -32,14 +32,31 @@ export class FiscalSupabaseService implements OnModuleDestroy {
 
   // --- fiscal_invoices ---
 
+  /** Retorna a NFe mais recente do pedido. */
   async findInvoiceByPedidoId(pedidoId: number): Promise<FiscalInvoiceRow | null> {
     const { data, error } = await this.getClient()
       .from('fiscal_invoices')
       .select('*')
       .eq('pedido_id', pedidoId)
-      .maybeSingle();
+      .order('created_at', { ascending: false })
+      .limit(1);
     if (error) throw new Error(`fiscal_invoices select: ${error.message}`);
-    return data as FiscalInvoiceRow | null;
+    const row = Array.isArray(data) && data.length > 0 ? data[0] : null;
+    return row as FiscalInvoiceRow | null;
+  }
+
+  /** Retorna o rascunho mais recente do pedido (para múltiplas NFe por pedido). */
+  async findRascunhoByPedidoId(pedidoId: number): Promise<FiscalInvoiceRow | null> {
+    const { data, error } = await this.getClient()
+      .from('fiscal_invoices')
+      .select('*')
+      .eq('pedido_id', pedidoId)
+      .eq('status', 'RASCUNHO')
+      .order('created_at', { ascending: false })
+      .limit(1);
+    if (error) throw new Error(`fiscal_invoices select rascunho: ${error.message}`);
+    const row = Array.isArray(data) && data.length > 0 ? data[0] : null;
+    return row as FiscalInvoiceRow | null;
   }
 
   async findInvoiceById(id: string): Promise<FiscalInvoiceRow | null> {
@@ -70,6 +87,8 @@ export class FiscalSupabaseService implements OnModuleDestroy {
     serie: string;
     focus_id: string;
     status: FiscalInvoiceStatus;
+    valor_nota?: number | null;
+    payload_json?: Record<string, unknown> | null;
     error_message?: string | null;
   }): Promise<FiscalInvoiceRow> {
     const { data, error } = await this.getClient()
@@ -81,6 +100,127 @@ export class FiscalSupabaseService implements OnModuleDestroy {
     return data as FiscalInvoiceRow;
   }
 
+  /** Salva ou atualiza rascunho (apenas banco; não envia para API). payload_json opcional. Permite múltiplos rascunhos/notas por pedido. */
+  async saveDraft(draft: {
+    pedido_id: number;
+    empresa_id: number;
+    natureza_operacao_id: number;
+    payload_json?: Record<string, unknown> | null;
+  }): Promise<FiscalInvoiceRow> {
+    const existente = await this.findRascunhoByPedidoId(draft.pedido_id);
+    const payloadUpdate = draft.payload_json !== undefined ? { payload_json: draft.payload_json } : {};
+    const valorNotaFromPayload =
+      draft.payload_json && typeof (draft.payload_json as Record<string, unknown>).valor_total === 'number'
+        ? Number((draft.payload_json as Record<string, unknown>).valor_total)
+        : null;
+    const valorNotaUpdate =
+      valorNotaFromPayload != null && !Number.isNaN(valorNotaFromPayload)
+        ? { valor_nota: valorNotaFromPayload }
+        : {};
+    if (existente?.status === 'RASCUNHO') {
+      const { data, error } = await this.getClient()
+        .from('fiscal_invoices')
+        .update({
+          empresa_id: draft.empresa_id,
+          natureza_operacao_id: draft.natureza_operacao_id,
+          ...payloadUpdate,
+          ...valorNotaUpdate,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', existente.id)
+        .select('*')
+        .single();
+      if (error) throw new Error(`fiscal_invoices update draft: ${error.message}`);
+      return data as FiscalInvoiceRow;
+    }
+    const { data, error } = await this.getClient()
+      .from('fiscal_invoices')
+      .insert({
+        pedido_id: draft.pedido_id,
+        empresa_id: draft.empresa_id,
+        natureza_operacao_id: draft.natureza_operacao_id,
+        valor_nota: valorNotaFromPayload,
+        numero_nf: null,
+        serie: '1',
+        focus_id: null,
+        status: 'RASCUNHO',
+        payload_json: draft.payload_json ?? null,
+      })
+      .select('*')
+      .single();
+    if (error) throw new Error(`fiscal_invoices insert draft: ${error.message}`);
+    return data as FiscalInvoiceRow;
+  }
+
+  /** Reabre invoice (ex.: ERRO) para nova emissão com payload. */
+  async reopenInvoiceForEmit(
+    id: string,
+    update: {
+      focus_id: string;
+      numero_nf: number;
+      empresa_id: number;
+      natureza_operacao_id: number;
+      payload_json: Record<string, unknown>;
+      valor_nota?: number | null;
+    },
+  ): Promise<FiscalInvoiceRow> {
+    const valorNotaFromPayload =
+      update.payload_json && typeof update.payload_json.valor_total === 'number'
+        ? Number(update.payload_json.valor_total)
+        : null;
+    const { data, error } = await this.getClient()
+      .from('fiscal_invoices')
+      .update({
+        status: 'PENDENTE',
+        focus_id: update.focus_id,
+        numero_nf: update.numero_nf,
+        empresa_id: update.empresa_id,
+        natureza_operacao_id: update.natureza_operacao_id,
+        payload_json: update.payload_json,
+        ...(valorNotaFromPayload != null && !Number.isNaN(valorNotaFromPayload)
+          ? { valor_nota: valorNotaFromPayload }
+          : {}),
+        error_message: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .select('*')
+      .single();
+    if (error) throw new Error(`fiscal_invoices reopen: ${error.message}`);
+    return data as FiscalInvoiceRow;
+  }
+
+  /** Converte rascunho em pendente e define focus_id e numero_nf (para envio à API). */
+  async convertDraftToPendente(
+    id: string,
+    update: { focus_id: string; numero_nf: number; payload_json?: Record<string, unknown> | null },
+  ): Promise<FiscalInvoiceRow> {
+    const upd: Record<string, unknown> = {
+      status: 'PENDENTE',
+      focus_id: update.focus_id,
+      numero_nf: update.numero_nf,
+      updated_at: new Date().toISOString(),
+    };
+    if (update.payload_json !== undefined) {
+      upd.payload_json = update.payload_json;
+      const valorNotaFromPayload =
+        update.payload_json && typeof update.payload_json.valor_total === 'number'
+          ? Number(update.payload_json.valor_total)
+          : null;
+      if (valorNotaFromPayload != null && !Number.isNaN(valorNotaFromPayload)) {
+        upd.valor_nota = valorNotaFromPayload;
+      }
+    }
+    const { data, error } = await this.getClient()
+      .from('fiscal_invoices')
+      .update(upd)
+      .eq('id', id)
+      .select('*')
+      .single();
+    if (error) throw new Error(`fiscal_invoices convertDraft: ${error.message}`);
+    return data as FiscalInvoiceRow;
+  }
+
   async updateInvoiceStatus(
     id: string,
     update: {
@@ -89,6 +229,8 @@ export class FiscalSupabaseService implements OnModuleDestroy {
       xml_url?: string | null;
       pdf_url?: string | null;
       error_message?: string | null;
+      numero_nf?: number | null;
+      valor_nota?: number | null;
     },
   ): Promise<FiscalInvoiceRow> {
     const { data, error } = await this.getClient()
@@ -105,14 +247,45 @@ export class FiscalSupabaseService implements OnModuleDestroy {
     return this.updateInvoiceStatus(id, { status: 'PROCESSANDO' });
   }
 
-  async listInvoices(limit = 50): Promise<FiscalInvoiceRow[]> {
-    const { data, error } = await this.getClient()
+  async listInvoices(params: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    empresa_id?: number;
+    search?: string;
+  } = {}): Promise<{ data: FiscalInvoiceRow[]; count: number }> {
+    const { page = 1, limit = 20, status, empresa_id, search } = params;
+
+    let query = this.getClient()
       .from('fiscal_invoices')
-      .select('*')
+      .select('*', { count: 'exact' });
+
+    if (status) {
+      query = query.eq('status', status);
+    }
+    if (empresa_id) {
+      query = query.eq('empresa_id', empresa_id);
+    }
+    if (search && search.trim() !== '') {
+      const numSearch = Number(search.replace(/\D/g, ''));
+      if (!Number.isNaN(numSearch) && numSearch > 0) {
+        query = query.or(`numero_nf.eq.${numSearch},pedido_id.eq.${numSearch}`);
+      }
+    }
+
+    const offset = (page - 1) * limit;
+    query = query
       .order('created_at', { ascending: false })
-      .limit(limit);
+      .range(offset, offset + limit - 1);
+
+    const { data, error, count } = await query;
+
     if (error) throw new Error(`fiscal_invoices list: ${error.message}`);
-    return (data ?? []) as FiscalInvoiceRow[];
+
+    return {
+      data: (data ?? []) as FiscalInvoiceRow[],
+      count: count ?? 0,
+    };
   }
 
   /** Notas em PROCESSANDO há mais de X minutos (para sincronização com Focus NFe quando webhook não chega). */
@@ -131,36 +304,12 @@ export class FiscalSupabaseService implements OnModuleDestroy {
   // --- fiscal_sequencia ---
 
   async getNextNumeroNf(empresaId: number, serie: string): Promise<number> {
-    const table = 'fiscal_sequencia';
-    const { data: existing } = await this.getClient()
-      .from(table)
-      .select('id, ultimo_numero')
-      .eq('empresa_id', empresaId)
-      .eq('serie', serie)
-      .maybeSingle();
-
-    const nextNumero = existing
-      ? (existing as FiscalSequenciaRow).ultimo_numero + 1
-      : 1;
-
-    if (existing) {
-      const { error } = await this.getClient()
-        .from(table)
-        .update({ ultimo_numero: nextNumero })
-        .eq('id', (existing as FiscalSequenciaRow).id);
-      if (error) throw new Error(`fiscal_sequencia update: ${error.message}`);
-    } else {
-      const { error } = await this.getClient()
-        .from(table)
-        .insert({
-          empresa_id: empresaId,
-          serie,
-          ultimo_numero: nextNumero,
-        });
-      if (error) throw new Error(`fiscal_sequencia insert: ${error.message}`);
-    }
-
-    return nextNumero;
+    const { data, error } = await this.getClient()
+      .rpc('next_numero_nf', { p_empresa_id: empresaId, p_serie: serie });
+    if (error) throw new Error(`next_numero_nf RPC: ${error.message}`);
+    const num = typeof data === 'number' ? data : Number(data);
+    if (!num || num < 1) throw new Error(`next_numero_nf retornou valor inválido: ${data}`);
+    return num;
   }
 
   // --- fiscal_eventos ---

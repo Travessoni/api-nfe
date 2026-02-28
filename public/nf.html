@@ -1,0 +1,1218 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nota Fiscal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="app.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/pt.js"></script>
+  <script src="modal-scroll-lock.js"></script>
+  <style>
+    .page-header {
+      position: sticky;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      background: #161618;
+      max-width: 1240px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+      padding: 24px 0;
+      box-sizing: border-box;
+    }
+
+    .page-header h1 {
+      margin: 0;
+    }
+
+    @media (max-width: 1239px) {
+      .page-header {
+        padding: 24px 0;
+      }
+    }
+
+    .nf-page .container {
+      padding-top: 0px;
+    }
+
+    .context-actions {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .context-help {
+      color: #a1a1aa;
+      font-size: 0.85rem;
+      margin-top: 8px;
+    }
+
+    .nf-sticky-actions {
+      position: sticky;
+      bottom: 0;
+      background: #1D1D20;
+      border: 1px solid #27272A;
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 16px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+    }
+
+    .label-link-natureza {
+      display: block;
+      font-size: 14px;
+      font-weight: 500;
+      color: #a1a1aa;
+      text-decoration: none;
+    }
+
+    .label-link-natureza:hover {
+      text-decoration: underline;
+      color: #fafafa;
+    }
+  </style>
+</head>
+
+<body class="nf-page">
+  <div class="container">
+    <div class="page-header">
+      <h1>Nota Fiscal</h1>
+      <div class="context-actions">
+        <button type="button" class="secondary btn-icon-lucide" id="btnVoltarPainel">Voltar</button>
+        <button type="button" class="primary btn-icon-lucide" id="btnEmitirNF"><i data-lucide="check"></i>
+          Salvar</button>
+      </div>
+    </div>
+
+    <div class="card" id="nfContextCard">
+      <h2 style="margin: 0 0 20px 0;">Emitir NFe</h2>
+      <div class="form-row form-row-emitir" style="align-items: flex-end;">
+        <div class="form-group">
+          <label for="empresaId">Empresa (remetente)</label>
+          <select id="empresaId">
+            <option value="">Selecionar</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <a href="naturezas.html" class="label-link-natureza" id="labelNaturezaOperacao">Natureza de operação</a>
+          <select id="naturezaId">
+            <option value="">Selecionar</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="pedidoId">ID do pedido</label>
+          <input type="number" id="pedidoId" min="1" placeholder="Ex: 1">
+        </div>
+      </div>
+      <div style="margin-top: 16px; display:flex; gap: 12px; flex-wrap: wrap;">
+        <button type="button" class="primary btn-icon-lucide" id="btnCarregarDadosNF"><i data-lucide="download"></i>
+          Carregar dados</button>
+      </div>
+      <div id="nfPageMessage" class="message" style="display:none;"></div>
+      <div class="context-help" id="nfModeHelp"></div>
+    </div>
+
+    <div class="card" id="nfFormCard">
+      <div id="modalAdicionarNFMessage" class="message" style="display: none; margin-bottom: 16px;"></div>
+      <form id="formAdicionarNF" novalidate>
+        <div class="form-section">
+          <h4 class="form-section-title">Nota Fiscal</h4>
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="nf_natureza_operacao">Natureza de operação</label>
+              <input type="text" id="nf_natureza_operacao" name="natureza_operacao"
+                placeholder="Ex: Venda de mercadoria">
+            </div>
+            <div class="form-group form-group-datetime">
+              <label for="nf_data_emissao">Data de emissão</label>
+              <input type="text" id="nf_data_emissao" name="data_emissao" placeholder="dd/mm/aaaa, hh:mm:ss" readonly
+                title="Clique para selecionar data e hora">
+            </div>
+            <div class="form-group form-group-datetime">
+              <label for="nf_data_entrada_saida">Data entrada/saída</label>
+              <input type="text" id="nf_data_entrada_saida" name="data_entrada_saida" placeholder="dd/mm/aaaa, hh:mm:ss"
+                readonly title="Clique para selecionar data e hora">
+            </div>
+            <div class="form-group">
+              <label for="nf_finalidade_emissao">Finalidade</label>
+              <input type="text" id="nf_finalidade_emissao" name="finalidade_emissao" placeholder="1">
+            </div>
+            <div class="form-group">
+              <label for="nf_consumidor_final">Consumidor final</label>
+              <select id="nf_consumidor_final" name="consumidor_final">
+                <option value="1">Sim</option>
+                <option value="0">Não</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="nf_presenca_comprador">Presença comprador</label>
+              <select id="nf_presenca_comprador" name="presenca_comprador">
+                <option value="1">Presencial</option>
+                <option value="2" selected>Internet</option>
+                <option value="9">Outros</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="nf_local_destino">Local destino</label>
+              <select id="nf_local_destino" name="local_destino">
+                <option value="1">1 - Mesma UF</option>
+                <option value="2">2 - Outra UF</option>
+                <option value="3">3 - Exterior</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="nf_indicador_ie_dest">Indicador IE destinatário</label>
+              <select id="nf_indicador_ie_dest" name="indicador_inscricao_estadual_destinatario">
+                <option value="1">1 - Contribuinte ICMS</option>
+                <option value="9" selected>9 - Não contribuinte</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Emitente: dados preenchidos por "Carregar dados", não exibidos -->
+        <div class="form-section" style="display: none;" aria-hidden="true">
+          <input type="hidden" id="nf_cnpj_emitente" name="cnpj_emitente">
+          <input type="hidden" id="nf_nome_emitente" name="nome_emitente">
+          <input type="hidden" id="nf_nome_fantasia_emitente" name="nome_fantasia_emitente">
+          <input type="hidden" id="nf_inscricao_estadual_emitente" name="inscricao_estadual_emitente">
+          <input type="hidden" id="nf_cep_emitente" name="cep_emitente">
+          <input type="hidden" id="nf_uf_emitente" name="uf_emitente">
+          <input type="hidden" id="nf_municipio_emitente" name="municipio_emitente">
+          <input type="hidden" id="nf_bairro_emitente" name="bairro_emitente">
+          <input type="hidden" id="nf_logradouro_emitente" name="logradouro_emitente">
+          <input type="hidden" id="nf_numero_emitente" name="numero_emitente">
+          <input type="hidden" id="nf_telefone_emitente" name="telefone_emitente">
+        </div>
+
+        <div class="form-section">
+          <h4 class="form-section-title">Destinatário</h4>
+          <div class="form-grid-2">
+            <div class="form-group" style="grid-column: 1 / -1;">
+              <label for="nf_cliente_busca">Cliente</label>
+              <div class="cliente-search-wrap">
+                <input type="text" id="nf_cliente_busca" autocomplete="off" placeholder="Cliente do pedido" readonly>
+                <button type="button" class="cliente-btn-add-edit" id="nf_cliente_btn_add_edit"
+                  aria-label="Adicionar cliente"><i data-lucide="plus"></i></button>
+                <ul class="cliente-contatos-list" id="nf_cliente_contatos_list"></ul>
+              </div>
+            </div>
+            <input type="hidden" id="nf_nome_destinatario" name="nome_destinatario">
+
+            <div class="form-group nf-destinatario-endereco-wrap" style="grid-column: 1 / -1;">
+              <label class="form-section-subtitle">Endereço do destinatário</label>
+              <div id="nfDestinatarioEnderecosContainer">
+                <div class="nf-endereco-cards" id="nfDestinatarioEnderecosCards" style="display: none;"></div>
+                <button type="button" class="nf-endereco-add-btn secondary btn-icon-lucide"
+                  id="nfDestinatarioEnderecoAddBtn" style="display: none;"><i data-lucide="plus"></i> Adicionar
+                  Endereço</button>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="nf_tipo_pessoa_dest">Tipo de Pessoa</label>
+              <select id="nf_tipo_pessoa_dest" name="tipo_pessoa_dest" required>
+                <option value="">Selecionar</option>
+                <option value="pf">Pessoa Física</option>
+                <option value="pj">Pessoa Jurídica</option>
+              </select>
+            </div>
+            <div class="form-group" id="nf_doc_dest_wrap">
+              <label for="nf_cpf_cnpj_dest" id="nf_doc_dest_label">CPF ou CNPJ</label>
+              <input type="text" id="nf_cpf_cnpj_dest" placeholder="Selecione o tipo de pessoa" maxlength="18">
+              <span class="error-msg" id="nf_doc_dest_error" style="display: none;"></span>
+            </div>
+            <div class="form-group">
+              <label for="nf_inscricao_estadual_destinatario">Inscrição estadual</label>
+              <input type="text" id="nf_inscricao_estadual_destinatario" name="inscricao_estadual_destinatario"
+                placeholder="ISENTO ou número">
+            </div>
+            <div class="form-grid-2" style="grid-column: 1 / -1; align-items: stretch; margin-top: 8px;">
+              <div style="display: flex; flex-direction: column; gap: 16px;">
+                <div class="form-group">
+                  <label for="nf_cep_destinatario">CEP</label>
+                  <input type="text" id="nf_cep_destinatario" name="cep_destinatario" placeholder="Apenas números">
+                </div>
+                <div class="form-group">
+                  <label for="nf_uf_destinatario">UF</label>
+                  <input type="text" id="nf_uf_destinatario" name="uf_destinatario" placeholder="UF" maxlength="2">
+                </div>
+                <div class="form-group">
+                  <label for="nf_municipio_destinatario">Município</label>
+                  <input type="text" id="nf_municipio_destinatario" name="municipio_destinatario" placeholder="Cidade">
+                </div>
+                <div class="form-group">
+                  <label for="nf_bairro_destinatario">Bairro</label>
+                  <input type="text" id="nf_bairro_destinatario" name="bairro_destinatario" placeholder="Bairro">
+                </div>
+              </div>
+
+              <div style="display: flex; flex-direction: column; gap: 16px;">
+                <div class="form-group">
+                  <label for="nf_logradouro_destinatario">Rua</label>
+                  <input type="text" id="nf_logradouro_destinatario" name="logradouro_destinatario"
+                    placeholder="Rua, Av.">
+                </div>
+                <div class="form-group">
+                  <label for="nf_numero_destinatario">Número</label>
+                  <input type="text" id="nf_numero_destinatario" name="numero_destinatario" placeholder="Nº">
+                </div>
+                <div class="form-group">
+                  <label for="nf_complemento_destinatario">Complemento</label>
+                  <input type="text" id="nf_complemento_destinatario" name="complemento_destinatario"
+                    placeholder="Apto, Sala, Bloco">
+                </div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="nf_pais_destinatario">País</label>
+              <input type="text" id="nf_pais_destinatario" name="pais_destinatario" placeholder="Brasil">
+            </div>
+            <div class="form-group">
+              <label for="nf_telefone_destinatario">Fone/FAX</label>
+              <input type="text" id="nf_telefone_destinatario" name="telefone_destinatario" placeholder="Opcional">
+            </div>
+          </div>
+        </div>
+        <div class="form-section">
+          <h4 class="form-section-title">Produtos</h4>
+          <table class="nf-items-table">
+            <thead>
+              <tr>
+                <th class="col-num col-item-num"></th>
+                <th class="col-desc">Descrição</th>
+                <th class="col-num">SKU</th>
+                <th class="col-ncm">NCM</th>
+                <th>UN</th>
+                <th class="col-num">Qtd</th>
+                <th class="col-num">Valor un.</th>
+                <th class="col-num">Valor total</th>
+                <th class="col-del"></th>
+              </tr>
+            </thead>
+            <tbody id="nfItemsBody"></tbody>
+          </table>
+          <button type="button" class="small" id="btnAdicionarItemNF" style="margin-top: 10px;">+ Adicionar
+            produto</button>
+        </div>
+        <div class="form-section">
+          <h4 class="form-section-title">Totais</h4>
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="nf_valor_produtos">Valor produtos (R$)</label>
+              <input type="number" id="nf_valor_produtos" name="valor_produtos" step="0.01" min="0">
+            </div>
+            <div class="form-group">
+              <label for="nf_valor_frete">Valor frete (R$)</label>
+              <input type="number" id="nf_valor_frete" name="valor_frete" step="0.01" min="0">
+            </div>
+            <div class="form-group">
+              <label for="nf_valor_desconto">Valor desconto (R$)</label>
+              <input type="number" id="nf_valor_desconto" name="valor_desconto" step="0.01" min="0" placeholder="0">
+            </div>
+            <div class="form-group">
+              <label for="nf_valor_total">Valor total (R$)</label>
+              <input type="number" id="nf_valor_total" name="valor_total" step="0.01" min="0">
+            </div>
+          </div>
+        </div>
+        <div class="form-section" id="formSectionCalcImposto">
+          <div class="calc-imposto-header">
+            <h4 class="form-section-title" style="margin: 0;">Cálculo de imposto</h4>
+            <div class="calc-imposto-toggle-group">
+              <span>Cálculo automático ligado</span>
+              <div class="toggle-wrap">
+                <div class="toggle-switch on" id="nfCalcAutoToggle" role="switch" aria-checked="true"
+                  title="Ativar/desativar cálculo automático"></div>
+                <span id="nfCalcAutoLabel" style="font-size: 0.85rem; color: #a1a1aa;">Ativado</span>
+              </div>
+            </div>
+          </div>
+          <div class="form-grid-4" id="calcImpostoInputs">
+            <div class="form-group">
+              <label for="nf_total_produtos">Total dos Produtos (R$)</label>
+              <input type="number" id="nf_total_produtos" step="0.01" min="0" placeholder="0,00">
+            </div>
+            <div class="form-group">
+              <label for="nf_valor_frete_calc">Valor do Frete (R$)</label>
+              <input type="number" id="nf_valor_frete_calc" step="0.01" min="0" placeholder="0,00">
+            </div>
+            <div class="form-group">
+              <label for="nf_valor_seguro_calc">Valor do Seguro (R$)</label>
+              <input type="number" id="nf_valor_seguro_calc" step="0.01" min="0" placeholder="0,00">
+            </div>
+            <div class="form-group">
+              <label for="nf_outras_despesas">Outras Despesas (R$)</label>
+              <input type="number" id="nf_outras_despesas" step="0.01" min="0" placeholder="0,00">
+            </div>
+            <div class="form-group">
+              <label for="nf_desconto_calc">Desconto (R$)</label>
+              <input type="number" id="nf_desconto_calc" step="0.01" min="0" placeholder="0,00">
+            </div>
+            <div class="form-group">
+              <label for="nf_total_nota">Total da Nota (R$)</label>
+              <input type="number" id="nf_total_nota" step="0.01" min="0" placeholder="0,00">
+            </div>
+            <div class="form-group">
+              <label for="nf_base_icms">Base ICMS</label>
+              <input type="number" id="nf_base_icms" step="0.01" min="0" placeholder="0,00">
+            </div>
+            <div class="form-group">
+              <label for="nf_valor_icms">Valor ICMS</label>
+              <input type="number" id="nf_valor_icms" step="0.01" min="0" placeholder="0,00">
+            </div>
+            <div class="form-group">
+              <label for="nf_base_icms_st">Base ICMS ST</label>
+              <input type="number" id="nf_base_icms_st" step="0.01" min="0" placeholder="0,00">
+            </div>
+            <div class="form-group">
+              <label for="nf_valor_icms_st">Valor ICMS ST</label>
+              <input type="number" id="nf_valor_icms_st" step="0.01" min="0" placeholder="0,00">
+            </div>
+            <div class="form-group">
+              <label for="nf_valor_ipi">Valor IPI</label>
+              <input type="number" id="nf_valor_ipi" step="0.01" min="0" placeholder="0,00">
+            </div>
+            <div class="form-group">
+              <label for="nf_total_is">Total IS (R$)</label>
+              <input type="number" id="nf_total_is" step="0.01" min="0" placeholder="0,00">
+            </div>
+            <div class="form-group">
+              <label for="nf_total_ibs">Total IBS (R$)</label>
+              <input type="number" id="nf_total_ibs" step="0.01" min="0" placeholder="0,00">
+            </div>
+            <div class="form-group">
+              <label for="nf_total_cbs">Total CBS (R$)</label>
+              <input type="number" id="nf_total_cbs" step="0.01" min="0" placeholder="0,00">
+            </div>
+            <div class="form-group">
+              <label for="nf_total_servicos">Total dos Serviços</label>
+              <input type="number" id="nf_total_servicos" step="0.01" min="0" placeholder="0,00">
+            </div>
+            <div class="form-group">
+              <label for="nf_valor_issqn">Valor ISSQN</label>
+              <input type="number" id="nf_valor_issqn" step="0.01" min="0" placeholder="0,00">
+            </div>
+            <div class="form-group">
+              <label for="nf_valor_funrural">Valor Funrural (R$)</label>
+              <input type="number" id="nf_valor_funrural" step="0.01" min="0" placeholder="0,00">
+            </div>
+            <div class="form-group">
+              <label for="nf_total_faturado">Total Faturado (R$)</label>
+              <input type="number" id="nf_total_faturado" step="0.01" min="0" placeholder="0,00">
+            </div>
+            <div class="form-group">
+              <label for="nf_total_tributos" class="label-with-info">Total A. Tributos (R$) <span class="info-icon"
+                  title="Valor aproximado dos tributos">&#8505;</span></label>
+              <input type="number" id="nf_total_tributos" step="0.01" min="0" placeholder="0,00">
+            </div>
+          </div>
+        </div>
+        <div class="form-section">
+          <h4 class="form-section-title">Retenções</h4>
+          <div class="form-grid-4">
+            <div class="form-group">
+              <label for="nf_minimo_retencao">Mínimo p/ retenção</label>
+              <input type="number" id="nf_minimo_retencao" step="0.01" min="0" value="0" placeholder="0,00">
+            </div>
+            <div class="form-group">
+              <label for="nf_base_retencoes">Base p/ retenções</label>
+              <input type="number" id="nf_base_retencoes" step="0.01" min="0" placeholder="0,00">
+            </div>
+            <div class="form-group">
+              <label for="nf_valor_ir">Valor IR</label>
+              <input type="number" id="nf_valor_ir" step="0.01" min="0" placeholder="0,00">
+            </div>
+            <div class="form-group">
+              <label for="nf_valor_csll">Valor CSLL</label>
+              <input type="number" id="nf_valor_csll" step="0.01" min="0" placeholder="0,00">
+            </div>
+            <div class="form-group">
+              <label for="nf_valor_pis_retido">Valor PIS retido</label>
+              <input type="number" id="nf_valor_pis_retido" step="0.01" min="0" placeholder="0,00">
+            </div>
+            <div class="form-group">
+              <label for="nf_valor_cofins_retido">Valor COFINS retido</label>
+              <input type="number" id="nf_valor_cofins_retido" step="0.01" min="0" placeholder="0,00">
+            </div>
+            <div class="form-group">
+              <label for="nf_valor_iss_retido">Valor ISS retido</label>
+              <input type="number" id="nf_valor_iss_retido" step="0.01" min="0" placeholder="0,00">
+            </div>
+          </div>
+        </div>
+        <div class="form-section">
+          <h4 class="form-section-title">Transportador / Volumes</h4>
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="nf_transporte">Transporte</label>
+              <select id="nf_transporte">
+                <option value="nao">Não haverá transporte</option>
+                <option value="manual">Inserir transportadora manualmente</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="nf_frete_por_conta">Frete por conta</label>
+              <select id="nf_frete_por_conta">
+                <option value="0">0 - Emitente</option>
+                <option value="1">1 - Destinatário</option>
+                <option value="2">2 - Terceiros</option>
+                <option value="9">9 - Sem frete</option>
+              </select>
+            </div>
+          </div>
+          <h5 class="form-section-subtitle">Dados da transportadora</h5>
+          <div class="form-grid-2" id="nfTransportadorDados">
+            <div class="form-group">
+              <label for="nf_transp_nome">Nome</label>
+              <div class="nf-produto-ac-wrap">
+                <input type="text" id="nf_transp_nome" placeholder="Razão social" autocomplete="off">
+                <ul class="nf-produto-ac-list" id="nfTranspAcList"></ul>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="nf_transp_uf_veiculo">UF veículo</label>
+              <select id="nf_transp_uf_veiculo">
+                <option value="">UF</option>
+                <option value="MG">MG</option>
+                <option value="SP">SP</option>
+                <option value="RJ">RJ</option>
+                <option value="PR">PR</option>
+                <option value="SC">SC</option>
+                <option value="RS">RS</option>
+                <option value="BA">BA</option>
+                <option value="CE">CE</option>
+                <option value="PE">PE</option>
+                <option value="GO">GO</option>
+                <option value="ES">ES</option>
+                <option value="DF">DF</option>
+                <option value="AC">AC</option>
+                <option value="AL">AL</option>
+                <option value="AM">AM</option>
+                <option value="AP">AP</option>
+                <option value="MA">MA</option>
+                <option value="MS">MS</option>
+                <option value="MT">MT</option>
+                <option value="PA">PA</option>
+                <option value="PB">PB</option>
+                <option value="PI">PI</option>
+                <option value="RN">RN</option>
+                <option value="RO">RO</option>
+                <option value="RR">RR</option>
+                <option value="SE">SE</option>
+                <option value="TO">TO</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="nf_transp_cnpj_cpf">CNPJ/CPF</label>
+              <input type="text" id="nf_transp_cnpj_cpf" placeholder="Apenas números">
+            </div>
+            <div class="form-group">
+              <label for="nf_transp_ie">Inscrição Estadual</label>
+              <input type="text" id="nf_transp_ie" placeholder="IE">
+            </div>
+            <div class="form-group">
+              <label for="nf_transp_uf">UF</label>
+              <select id="nf_transp_uf">
+                <option value="">UF</option>
+                <option value="MG">MG</option>
+                <option value="SP">SP</option>
+                <option value="RJ">RJ</option>
+                <option value="PR">PR</option>
+                <option value="SC">SC</option>
+                <option value="RS">RS</option>
+                <option value="BA">BA</option>
+                <option value="CE">CE</option>
+                <option value="PE">PE</option>
+                <option value="GO">GO</option>
+                <option value="ES">ES</option>
+                <option value="DF">DF</option>
+                <option value="AC">AC</option>
+                <option value="AL">AL</option>
+                <option value="AM">AM</option>
+                <option value="AP">AP</option>
+                <option value="MA">MA</option>
+                <option value="MS">MS</option>
+                <option value="MT">MT</option>
+                <option value="PA">PA</option>
+                <option value="PB">PB</option>
+                <option value="PI">PI</option>
+                <option value="RN">RN</option>
+                <option value="RO">RO</option>
+                <option value="RR">RR</option>
+                <option value="SE">SE</option>
+                <option value="TO">TO</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="nf_transp_municipio">Município</label>
+              <input type="text" id="nf_transp_municipio" placeholder="Cidade">
+            </div>
+            <div class="form-group" style="grid-column: 1 / -1;">
+              <label for="nf_transp_endereco">Endereço da transportadora</label>
+              <input type="text" id="nf_transp_endereco" placeholder="Logradouro, número, bairro">
+            </div>
+          </div>
+          <h5 class="form-section-subtitle">Dados do volume</h5>
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="nf_volume_quantidade">Quantidade</label>
+              <input type="number" id="nf_volume_quantidade" min="1" value="1" placeholder="1">
+            </div>
+            <div class="form-group">
+              <label for="nf_volume_peso_bruto" class="label-with-info">Peso Bruto <span class="info-icon"
+                  title="Em kg">&#8505;</span></label>
+              <input type="number" id="nf_volume_peso_bruto" step="0.001" min="0" placeholder="0,000">
+            </div>
+            <div class="form-group">
+              <label for="nf_volume_peso_liquido" class="label-with-info">Peso Líquido <span class="info-icon"
+                  title="Em kg">&#8505;</span></label>
+              <input type="number" id="nf_volume_peso_liquido" step="0.001" min="0" placeholder="0,000">
+            </div>
+            <div class="form-group">
+              <label for="nf_volume_numeracao">Numeração do volume</label>
+              <input type="text" id="nf_volume_numeracao" placeholder="Opcional">
+            </div>
+            <div class="form-group">
+              <label for="nf_volume_marca" class="label-with-info">Marca <span class="info-icon"
+                  title="Marca do volume">&#8505;</span></label>
+              <input type="text" id="nf_volume_marca" placeholder="Opcional">
+            </div>
+            <div class="form-group">
+              <label for="nf_volume_especie">Espécie</label>
+              <select id="nf_volume_especie">
+                <option value="">Selecione uma...</option>
+                <option value="VOLUME">Volume</option>
+                <option value="CAIXA">Caixa</option>
+                <option value="PACOTE">Pacote</option>
+                <option value="OUTROS">Outros</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <!-- Seções Pagamento, Categoria e Intermediador removidas a pedido do usuário -->
+        <div class="form-section">
+          <h4 class="form-section-title">Informações adicionais</h4>
+          <div class="form-grid-2">
+            <div class="form-group" style="grid-column: 1 / -1;">
+              <label for="nf_info_complementares" class="label-with-info">Informações complementares (natureza) <span class="info-icon" title="Naturezas de operação">&#8505;</span></label>
+              <textarea id="nf_info_complementares" rows="3"
+                placeholder="Informações complementares ao cliente"></textarea>
+            </div>
+            <div class="form-group" style="grid-column: 1 / -1;">
+              <label for="nf_info_fisco_natureza" class="label-with-info">Informações adicionais de interesse do fisco
+                (natureza) <span class="info-icon"
+                  title="Naturezas de operação">&#8505;</span></label>
+              <textarea id="nf_info_fisco_natureza" rows="2" placeholder="Informações de interesse do fisco"></textarea>
+            </div>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+  <div class="sheet-overlay" id="sheetCliente">
+    <div class="sheet-panel sheet-cliente">
+      <div class="sheet-header">
+        <h3 style="display: flex; align-items: center; gap: 8px;">
+          <span id="sheetClienteTitle">Novo cliente</span>
+          <i data-lucide="chevron-down" style="width: 18px; height: 18px; color: #a1a1aa;"></i>
+        </h3>
+        <button type="button" class="modal-close" id="sheetClienteClose" aria-label="Fechar"><i
+            data-lucide="x"></i></button>
+      </div>
+      <div class="sheet-body">
+        <div id="sheetClienteViewForm" class="modal-cliente-view active">
+          <form id="formCliente" novalidate>
+            <div class="form-section">
+              <div class="form-grid-2">
+                <div class="form-group" style="grid-column: 1 / -1;">
+                  <label for="cliente_nome_fantasia">Nome fantasia</label>
+                  <input type="text" id="cliente_nome_fantasia" name="nome_fantasia" placeholder="Nome fantasia">
+                </div>
+                <div class="form-group">
+                  <label for="cliente_tipo_pessoa">Tipo da pessoa</label>
+                  <select id="cliente_tipo_pessoa" name="tipo_pessoa">
+                    <option value="pj">Pessoa Jurídica</option>
+                    <option value="pf">Pessoa Física</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="cliente_cnpj">CNPJ</label>
+                  <div class="input-with-icon">
+                    <input type="text" id="cliente_cnpj" name="cnpj" placeholder="00.000.000/0000-00">
+                    <button type="button" class="input-icon-btn" id="btnClienteBuscarCnpj" aria-label="Buscar"><i
+                        data-lucide="search"></i></button>
+                  </div>
+                </div>
+                <div class="form-group" style="grid-column: 1 / -1;">
+                  <label for="cliente_razao_social">Razão social</label>
+                  <input type="text" id="cliente_razao_social" name="razao_social" placeholder="Razão social">
+                </div>
+                <div class="form-group">
+                  <label for="cliente_tipo_contribuinte">Tipo de contribuinte</label>
+                  <select id="cliente_tipo_contribuinte" name="tipo_contribuinte">
+                    <option value="1">1 - Contribuinte ICMS</option>
+                    <option value="2">2 - Contribuinte isento</option>
+                    <option value="9" selected>9 - Não contribuinte</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="cliente_inscricao_estadual">Inscrição estadual</label>
+                  <input type="text" id="cliente_inscricao_estadual" name="inscricao_estadual"
+                    placeholder="Inscrição estadual">
+                </div>
+                <div class="form-group" style="grid-column: 1 / -1;">
+                  <label for="cliente_email">Email</label>
+                  <input type="email" id="cliente_email" name="email" placeholder="email@exemplo.com">
+                </div>
+                <div class="form-group">
+                  <label for="cliente_telefone_celular">Telefone celular</label>
+                  <input type="text" id="cliente_telefone_celular" name="telefone_celular"
+                    placeholder="(00) 00000-0000">
+                </div>
+                <div class="form-group">
+                  <label for="cliente_telefone_comercial">Telefone comercial</label>
+                  <input type="text" id="cliente_telefone_comercial" name="telefone_comercial"
+                    placeholder="(00) 0000-0000">
+                </div>
+              </div>
+            </div>
+            <div class="form-section cliente-endereco-section">
+              <h4 class="form-section-title">Endereço</h4>
+              <div class="cliente-endereco-cards">
+                <div class="cliente-endereco-card cliente-endereco-card-add" id="clienteEnderecoCardAdd" role="button"
+                  tabindex="0" aria-label="Adicionar endereço" style="display: none;">
+                  <div class="cliente-endereco-card-add-icon"><i data-lucide="plus"></i></div>
+                  <span class="cliente-endereco-card-add-label">Adicionar endereço</span>
+                </div>
+                <div class="cliente-endereco-card" data-tipo="comercial">
+                  <div class="cliente-endereco-card-header">
+                    <span>Comercial</span>
+                    <button type="button" class="btn-edit-endereco" data-tipo="comercial" aria-label="Editar"><i
+                        data-lucide="pen"></i></button>
+                  </div>
+                  <div class="cliente-endereco-card-body" id="clienteEnderecoComercialDisplay">Clique em editar para
+                    preencher o endereço</div>
+                </div>
+                <div class="cliente-endereco-card" data-tipo="residencial">
+                  <div class="cliente-endereco-card-header">
+                    <span>Residencial</span>
+                    <button type="button" class="btn-edit-endereco" data-tipo="residencial" aria-label="Editar"><i
+                        data-lucide="pen"></i></button>
+                  </div>
+                  <div class="cliente-endereco-card-body" id="clienteEnderecoResidencialDisplay">Clique em editar para
+                    preencher o endereço</div>
+                </div>
+                <div class="cliente-endereco-card" data-tipo="entrega">
+                  <div class="cliente-endereco-card-header">
+                    <span>Entrega</span>
+                    <button type="button" class="btn-edit-endereco" data-tipo="entrega" aria-label="Editar"><i
+                        data-lucide="pen"></i></button>
+                  </div>
+                  <div class="cliente-endereco-card-body" id="clienteEnderecoEntregaDisplay">Clique em editar para
+                    preencher o endereço</div>
+                </div>
+                <div class="cliente-endereco-card" data-tipo="nota_fiscal">
+                  <div class="cliente-endereco-card-header">
+                    <span>Nota Fiscal</span>
+                    <button type="button" class="btn-edit-endereco" data-tipo="nota_fiscal" aria-label="Editar"><i
+                        data-lucide="pen"></i></button>
+                  </div>
+                  <div class="cliente-endereco-card-body" id="clienteEnderecoNotaFiscalDisplay">Clique em editar para
+                    preencher o endereço</div>
+                </div>
+              </div>
+            </div>
+          </form>
+        </div>
+        <div id="sheetClienteViewEndereco" class="modal-cliente-view">
+          <form id="formClienteEndereco" novalidate>
+            <input type="hidden" id="cliente_endereco_tipo" value="entrega">
+            <div class="form-section">
+              <div class="form-grid-2">
+                <div class="form-group">
+                  <label for="cliente_end_tipo">Tipo</label>
+                  <select id="cliente_end_tipo" name="tipo">
+                    <option value="comercial">Comercial</option>
+                    <option value="residencial">Residencial</option>
+                    <option value="entrega">Entrega</option>
+                    <option value="nota_fiscal">Nota Fiscal</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="cliente_end_cep">CEP</label>
+                  <input type="text" id="cliente_end_cep" name="cep" placeholder="00000-000">
+                </div>
+                <div class="form-group" style="grid-column: 1 / -1;">
+                  <label for="cliente_end_rua">Rua</label>
+                  <input type="text" id="cliente_end_rua" name="rua" placeholder="Rua">
+                </div>
+                <div class="form-group">
+                  <label for="cliente_end_numero">Número</label>
+                  <input type="text" id="cliente_end_numero" name="numero" placeholder="Nº">
+                </div>
+                <div class="form-group">
+                  <label for="cliente_end_complemento">Complemento</label>
+                  <input type="text" id="cliente_end_complemento" name="complemento" placeholder="Complemento">
+                </div>
+                <div class="form-group" style="grid-column: 1 / -1;">
+                  <label for="cliente_end_bairro">Bairro</label>
+                  <input type="text" id="cliente_end_bairro" name="bairro" placeholder="Bairro">
+                </div>
+                <div class="form-group">
+                  <label for="cliente_end_cidade">Cidade</label>
+                  <input type="text" id="cliente_end_cidade" name="cidade" placeholder="Cidade">
+                </div>
+                <div class="form-group">
+                  <label for="cliente_end_uf">UF</label>
+                  <select id="cliente_end_uf" name="uf">
+                    <option value="">UF</option>
+                    <option value="AC">AC</option>
+                    <option value="AL">AL</option>
+                    <option value="AM">AM</option>
+                    <option value="AP">AP</option>
+                    <option value="BA">BA</option>
+                    <option value="CE">CE</option>
+                    <option value="DF">DF</option>
+                    <option value="ES">ES</option>
+                    <option value="GO">GO</option>
+                    <option value="MA">MA</option>
+                    <option value="MG">MG</option>
+                    <option value="MS">MS</option>
+                    <option value="MT">MT</option>
+                    <option value="PA">PA</option>
+                    <option value="PB">PB</option>
+                    <option value="PE">PE</option>
+                    <option value="PI">PI</option>
+                    <option value="PR">PR</option>
+                    <option value="RJ">RJ</option>
+                    <option value="RN">RN</option>
+                    <option value="RO">RO</option>
+                    <option value="RR">RR</option>
+                    <option value="RS">RS</option>
+                    <option value="SC">SC</option>
+                    <option value="SE">SE</option>
+                    <option value="SP">SP</option>
+                    <option value="TO">TO</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+      <div class="sheet-footer" id="sheetClienteFooterForm">
+        <button type="button" class="secondary" id="btnClienteCancelar">Cancelar</button>
+        <button type="button" class="primary" id="btnClienteSalvar">Salvar contato</button>
+      </div>
+      <div class="sheet-footer" id="sheetClienteFooterEndereco" style="display: none;">
+        <button type="button" class="secondary" id="btnClienteEnderecoVoltar">Voltar</button>
+        <button type="button" class="primary" id="btnClienteEnderecoSalvar">Salvar</button>
+      </div>
+    </div>
+  </div>
+  <div class="sheet-overlay" id="sheetItemNF">
+    <div class="sheet-panel">
+      <div class="sheet-header">
+        <h3>Item da nota fiscal</h3>
+        <button type="button" class="modal-close" id="sheetItemNFClose" aria-label="Fechar"><i
+            data-lucide="x"></i></button>
+      </div>
+      <div class="sheet-body">
+        <div class="form-section" style="border: none; padding: 0; margin: 0;">
+          <div class="form-grid-2">
+            <div class="form-group" style="grid-column: 1 / -1;">
+              <label>Descrição</label>
+              <input type="text" id="sheet_descricao" data-field="descricao" placeholder="Descrição do produto">
+            </div>
+            <div class="form-group">
+              <label>SKU</label>
+              <input type="text" id="sheet_codigo_produto" data-field="codigo_produto" placeholder="SKU do produto">
+            </div>
+            <div class="form-group">
+              <label>Tipo</label>
+              <input type="text" id="sheet_tipo" data-field="tipo" placeholder="Produto, Serviço, HILLSONG...">
+            </div>
+          </div>
+        </div>
+        <div class="sheet-tabs" id="sheetTabs">
+          <button type="button" class="sheet-tab active" data-tab="dados">Dados do item</button>
+          <button type="button" class="sheet-tab" data-tab="icms">ICMS</button>
+          <button type="button" class="sheet-tab" data-tab="ipi">IPI</button>
+          <button type="button" class="sheet-tab" data-tab="pis">PIS/COFINS</button>
+          <button type="button" class="sheet-tab" data-tab="importacao">Importação</button>
+          <button type="button" class="sheet-tab" data-tab="outros">Outros</button>
+          <button type="button" class="sheet-tab" data-tab="estoque">Estoque</button>
+          <button type="button" class="sheet-tab" data-tab="retencoes">Retenções</button>
+          <button type="button" class="sheet-tab" data-tab="is">IS</button>
+          <button type="button" class="sheet-tab" data-tab="ibs">IBS</button>
+          <button type="button" class="sheet-tab" data-tab="cbs">CBS</button>
+        </div>
+        <div id="sheetTabDados" class="sheet-tab-content active">
+          <div class="form-section">
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label>Quantidade</label>
+                <input type="number" id="sheet_quantidade_comercial" data-field="quantidade_comercial" step="0.01"
+                  min="0">
+              </div>
+              <div class="form-group">
+                <label>Unidade</label>
+                <input type="text" id="sheet_unidade_comercial" data-field="unidade_comercial" placeholder="UN">
+              </div>
+              <div class="form-group">
+                <label>Valor Unitário</label>
+                <input type="number" id="sheet_valor_unitario_comercial" data-field="valor_unitario_comercial"
+                  step="0.01" min="0">
+              </div>
+              <div class="form-group">
+                <label>Valor Total</label>
+                <input type="number" id="sheet_valor_bruto" data-field="valor_bruto" step="0.01" min="0" readonly>
+              </div>
+              <div class="form-group">
+                <label>Valor Frete</label>
+                <input type="number" id="sheet_valor_frete" data-field="valor_frete" step="0.01" min="0" value="0">
+              </div>
+              <div class="form-group">
+                <label>Valor Desconto</label>
+                <input type="number" id="sheet_valor_desconto" data-field="valor_desconto" step="0.01" min="0"
+                  value="0">
+              </div>
+              <div class="form-group" style="grid-column: 1 / -1;">
+                <label>Natureza da Operação</label>
+                <input type="text" id="sheet_natureza" data-field="natureza" placeholder="Ex: Venda de Mercadoria">
+              </div>
+              <div class="form-group">
+                <label>CFOP</label>
+                <input type="text" id="sheet_cfop" data-field="cfop" placeholder="6108" maxlength="4">
+              </div>
+              <div class="form-group">
+                <label>NCM</label>
+                <input type="text" id="sheet_codigo_ncm" data-field="codigo_ncm" placeholder="39205100" maxlength="8">
+              </div>
+              <div class="form-group">
+                <label>CEST</label>
+                <input type="text" id="sheet_cest" data-field="cest" placeholder="Opcional">
+              </div>
+              <div class="form-group">
+                <label>GTIN/EAN</label>
+                <input type="text" id="sheet_gtin" data-field="codigo_barras_comercial" placeholder="SEM GTIN">
+              </div>
+              <div class="form-group">
+                <label>GTIN/EAN tributário</label>
+                <input type="text" id="sheet_gtin_trib" data-field="codigo_barras_tributavel" placeholder="SEM GTIN">
+              </div>
+              <div class="form-group">
+                <label>Peso Bruto (kg)</label>
+                <input type="number" id="sheet_peso_bruto" data-field="peso_bruto" step="0.001" min="0" value="0">
+              </div>
+              <div class="form-group">
+                <label>Peso Líquido (kg)</label>
+                <input type="number" id="sheet_peso_liquido" data-field="peso_liquido" step="0.001" min="0" value="0">
+              </div>
+              <div class="form-group" style="grid-column: 1 / -1;">
+                <label>Informações complementares do item</label>
+                <textarea id="sheet_info_complementares" data-field="info_complementares" rows="8"
+                  placeholder="Informações complementares"></textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="sheetTabIcms" class="sheet-tab-content">
+          <div class="form-section">
+            <div class="form-grid-2">
+              <div class="form-group" style="grid-column: 1 / -1;">
+                <label>Situação tributária do ICMS</label>
+                <select id="sheet_icms_situacao_tributaria" data-field="icms_situacao_tributaria">
+                  <option value="00">00 - Tributada integralmente</option>
+                  <option value="10">10 - Tributada com ST</option>
+                  <option value="20">20 - Tributada com redução BC</option>
+                  <option value="40">40 - Isenta</option>
+                  <option value="41">41 - Não tributada</option>
+                  <option value="50">50 - Suspensão</option>
+                  <option value="51">51 - Diferimento</option>
+                  <option value="60">60 - Cobrado anteriormente por ST</option>
+                  <option value="70">70 - Tributada com redução BC e ST</option>
+                  <option value="90">90 - Outras</option>
+                  <option value="400">400 - Não tributada (Simples Nacional)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Origem</label>
+                <select id="sheet_icms_origem" data-field="icms_origem">
+                  <option value="0">0 - Nacional</option>
+                  <option value="1">1 - Estrangeira (importação direta)</option>
+                  <option value="2">2 - Estrangeira (mercado interno)</option>
+                  <option value="3">3 - Nacional 40%+ conteúdo estrangeiro</option>
+                  <option value="4">4 - Nacional processos básicos</option>
+                  <option value="5">5 - Nacional &lt;40% conteúdo estrangeiro</option>
+                  <option value="6">6 - Estrangeira sem similar</option>
+                  <option value="7">7 - Estrangeira mercado interno sem similar</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Modalidade BC ICMS</label>
+                <select id="sheet_icms_modalidade_bc" data-field="icms_modalidade_base_calculo">
+                  <option value="0">Margem valor agregado</option>
+                  <option value="1">Pauta</option>
+                  <option value="2">Valor operação</option>
+                  <option value="3">Valor da operação</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>% ICMS</label>
+                <input type="number" id="sheet_icms_aliquota" data-field="icms_aliquota" step="0.01" min="0" value="0">
+              </div>
+              <div class="form-group">
+                <label>Valor ICMS</label>
+                <input type="number" id="sheet_icms_valor" data-field="icms_valor" step="0.01" min="0" value="0">
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="sheetTabIpi" class="sheet-tab-content">
+          <div class="form-section">
+            <div class="form-grid-2">
+              <div class="form-group" style="grid-column: 1 / -1;">
+                <label>Situação tributária do IPI</label>
+                <select id="sheet_ipi_situacao_tributaria" data-field="ipi_situacao_tributaria">
+                  <option value="50">50 - Saída tributada</option>
+                  <option value="51">51 - Saída tributária com alíquota zero</option>
+                  <option value="52">52 - Saída isenta</option>
+                  <option value="53">53 - Saída não-tributada</option>
+                  <option value="54">54 - Saída imune</option>
+                  <option value="55">55 - Saída com suspensão</option>
+                  <option value="99">99 - Outras</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Cód. Enquadramento IPI</label>
+                <input type="text" id="sheet_ipi_codigo_enquadramento" data-field="ipi_codigo_enquadramento_legal"
+                  placeholder="999">
+              </div>
+              <div class="form-group">
+                <label>Valor IPI</label>
+                <input type="number" id="sheet_ipi_valor" data-field="ipi_valor" step="0.01" min="0" value="0">
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="sheetTabPis" class="sheet-tab-content">
+          <div class="form-section">
+            <h5 class="form-section-subtitle">PIS</h5>
+            <div class="form-grid-2">
+              <div class="form-group" style="grid-column: 1 / -1;">
+                <label>Situação tributária do PIS</label>
+                <select id="sheet_pis_situacao_tributaria" data-field="pis_situacao_tributaria">
+                  <option value="01">01 - Operação tributável (alíquota normal)</option>
+                  <option value="02">02 - Operação tributável (alíquota diferenciada)</option>
+                  <option value="05">05 - Operação tributável (ST)</option>
+                  <option value="06">06 - Operação tributável (alíquota zero)</option>
+                  <option value="07">07 - Operação isenta</option>
+                  <option value="08">08 - Operação sem incidência</option>
+                  <option value="09">09 - Operação com suspensão</option>
+                  <option value="49">49 - Outras</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>% Base PIS</label>
+                <input type="number" id="sheet_pis_base" data-field="pis_base_calculo" step="0.01" min="0"
+                  value="100.0000">
+              </div>
+              <div class="form-group">
+                <label>Alíq. PIS %</label>
+                <input type="number" id="sheet_pis_aliquota" data-field="pis_aliquota_porcentual" step="0.01" min="0"
+                  value="0">
+              </div>
+              <div class="form-group">
+                <label>Valor PIS</label>
+                <input type="number" id="sheet_pis_valor" data-field="pis_valor" step="0.01" min="0" value="0" readonly>
+              </div>
+            </div>
+            <h5 class="form-section-subtitle">COFINS</h5>
+            <div class="form-grid-2">
+              <div class="form-group" style="grid-column: 1 / -1;">
+                <label>Situação tributária do COFINS</label>
+                <select id="sheet_cofins_situacao_tributaria" data-field="cofins_situacao_tributaria">
+                  <option value="01">01 - Operação tributável (alíquota normal)</option>
+                  <option value="02">02 - Operação tributável (alíquota diferenciada)</option>
+                  <option value="05">05 - Operação tributável (ST)</option>
+                  <option value="06">06 - Operação tributável (alíquota zero)</option>
+                  <option value="07">07 - Operação isenta</option>
+                  <option value="08">08 - Operação sem incidência</option>
+                  <option value="09">09 - Operação com suspensão</option>
+                  <option value="49">49 - Outras</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>% Base COFINS</label>
+                <input type="number" id="sheet_cofins_base" data-field="cofins_base_calculo" step="0.01" min="0"
+                  value="100.0000">
+              </div>
+              <div class="form-group">
+                <label>Alíq. COFINS %</label>
+                <input type="number" id="sheet_cofins_aliquota" data-field="cofins_aliquota_porcentual" step="0.01"
+                  min="0" value="0">
+              </div>
+              <div class="form-group">
+                <label>Valor COFINS</label>
+                <input type="number" id="sheet_cofins_valor" data-field="cofins_valor" step="0.01" min="0" value="0"
+                  readonly>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="sheetTabImportacao" class="sheet-tab-content">
+          <div class="form-section">
+            <div class="form-group">
+              <label>Situação</label>
+              <select id="sheet_importacao_situacao" data-field="importacao_situacao">
+                <option value="Não tributado">Não tributado</option>
+                <option value="Tributado">Tributado</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div id="sheetTabOutros" class="sheet-tab-content">
+          <div class="form-section">
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label>Unidade tributária</label>
+                <input type="text" id="sheet_unidade_tributavel" data-field="unidade_tributavel" placeholder="UN">
+              </div>
+              <div class="form-group">
+                <label>Quantidade tributária</label>
+                <input type="number" id="sheet_quantidade_tributavel" data-field="quantidade_tributavel" step="0.01"
+                  min="0" value="0">
+              </div>
+              <div class="form-group">
+                <label>Valor unitário tributário</label>
+                <input type="number" id="sheet_valor_unitario_tributavel" data-field="valor_unitario_tributavel"
+                  step="0.0000000001" min="0" value="0">
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="sheetTabEstoque" class="sheet-tab-content">
+          <div class="form-section">
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label>Código no fornecedor</label>
+                <input type="text" id="sheet_codigo_fornecedor" data-field="codigo_fornecedor" placeholder="Opcional">
+              </div>
+              <div class="form-group">
+                <label>Indicador de escala relevante</label>
+                <select id="sheet_escala_relevante" data-field="escala_relevante">
+                  <option value="S">S - Produzido em Escala Relevante</option>
+                  <option value="N">N - Produzido em Escala Não Relevante</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Número do lote</label>
+                <input type="text" id="sheet_numero_lote" data-field="numero_lote" placeholder="Opcional">
+              </div>
+              <div class="form-group">
+                <label>Data de fabricação</label>
+                <input type="text" id="sheet_data_fabricacao" data-field="data_fabricacao" placeholder="YYYY-MM-DD">
+              </div>
+              <div class="form-group">
+                <label>Data de validade</label>
+                <input type="text" id="sheet_data_validade" data-field="data_validade" placeholder="YYYY-MM-DD">
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="sheetTabRetencoes" class="sheet-tab-content">
+          <div class="form-section">
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label>Reter CSRF</label>
+                <select id="sheet_reter_csrf" data-field="reter_csrf">
+                  <option value="Não">Não</option>
+                  <option value="Sim">Sim</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Reter IR</label>
+                <select id="sheet_reter_ir" data-field="reter_ir">
+                  <option value="Não">Não</option>
+                  <option value="Sim">Sim</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="sheetTabIs" class="sheet-tab-content">
+          <div class="form-section">
+            <p style="font-size: 0.85rem; color: #a1a1aa;">IS aguardando definições. Os campos de IS estão aguardando
+              publicação oficial.</p>
+          </div>
+        </div>
+        <div id="sheetTabIbs" class="sheet-tab-content">
+          <div class="form-section">
+            <div class="form-grid-2">
+              <div class="form-group" style="grid-column: 1 / -1;">
+                <label>CST IBS</label>
+                <input type="text" id="sheet_ibs_cst" data-field="ibs_cbs_situacao_tributaria" placeholder="000">
+              </div>
+              <div class="form-group">
+                <label>Valor Base IBS</label>
+                <input type="number" id="sheet_ibs_base" data-field="ibs_cbs_base_calculo" step="0.01" min="0"
+                  value="0">
+              </div>
+              <div class="form-group">
+                <label>Alíq. IBS/UF</label>
+                <input type="number" id="sheet_ibs_uf_aliquota" data-field="ibs_uf_aliquota" step="0.01" min="0"
+                  value="0">
+              </div>
+              <div class="form-group">
+                <label>Valor IBS/UF</label>
+                <input type="number" id="sheet_ibs_uf_valor" data-field="ibs_uf_valor" step="0.01" min="0" value="0">
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="sheetTabCbs" class="sheet-tab-content">
+          <div class="form-section">
+            <div class="form-grid-2">
+              <div class="form-group" style="grid-column: 1 / -1;">
+                <label>CST CBS</label>
+                <input type="text" id="sheet_cbs_cst" data-field="cbs_cst" placeholder="000">
+              </div>
+              <div class="form-group">
+                <label>Alíq. CBS</label>
+                <input type="number" id="sheet_cbs_aliquota" data-field="cbs_aliquota" step="0.01" min="0" value="0">
+              </div>
+              <div class="form-group">
+                <label>Valor CBS</label>
+                <input type="number" id="sheet_cbs_valor" data-field="cbs_valor" step="0.01" min="0" value="0">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="sheet-footer">
+        <button type="button" class="secondary" id="sheetItemNFCancel">Cancelar</button>
+        <button type="button" class="primary" id="sheetItemNFSave">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="nf.js"></script>
+</body>
+
+</html>

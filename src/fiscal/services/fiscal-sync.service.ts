@@ -2,6 +2,7 @@ import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/commo
 import { ConfigService } from '@nestjs/config';
 import { FiscalSupabaseService } from './fiscal-supabase.service';
 import { FocusNFeClientService } from '../focus-nfe/focus-nfe-client.service';
+import { PedidoDataService } from './pedido-data.service';
 
 const INTERVAL_MS = 5 * 60 * 1000; // 5 minutos
 const MINUTOS_PROCESSANDO_PARA_SINCRONIZAR = 2; // Só consulta notas em PROCESSANDO há mais de 2 min
@@ -14,8 +15,9 @@ export class FiscalSyncService implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly supabase: FiscalSupabaseService,
     private readonly focusClient: FocusNFeClientService,
+    private readonly pedidoData: PedidoDataService,
     private readonly config: ConfigService,
-  ) {}
+  ) { }
 
   onModuleInit() {
     const disabled = this.config.get<string>('FISCAL_SYNC_DISABLED');
@@ -56,23 +58,37 @@ export class FiscalSyncService implements OnModuleInit, OnModuleDestroy {
         if (!focusId) continue;
 
         try {
-          const res = await this.focusClient.consultar(focusId);
+          const empresa = await this.pedidoData.getEmpresa(invoice.empresa_id);
+          const cnpjEmitente = empresa?.cnpj ? String(empresa.cnpj).replace(/\D/g, '') : undefined;
+          const tokensFromDb = empresa
+            ? { homologacao: empresa.tokenHomologacao, producao: empresa.tokenProducao }
+            : undefined;
+          const res = await this.focusClient.consultar(focusId, cnpjEmitente, tokensFromDb);
           ok++;
 
           const statusNorm = this.normalizarStatus(res.status);
           if (statusNorm === 'PROCESSANDO') continue; // Ainda processando na Focus, não atualiza
 
           const update: {
-            status: 'AUTORIZADO' | 'REJEITADO' | 'ERRO';
+            status: 'AUTORIZADO' | 'REJEITADO' | 'CANCELADO' | 'ERRO';
             chave_acesso?: string;
             xml_url?: string;
             pdf_url?: string;
             error_message?: string;
+            numero_nf?: number;
           } = { status: statusNorm };
 
           if (res.chave_nfe) update.chave_acesso = res.chave_nfe;
-          if (res.caminho_xml_nota_fiscal) update.xml_url = res.caminho_xml_nota_fiscal;
-          if (res.caminho_pdf_nota_fiscal) update.pdf_url = res.caminho_pdf_nota_fiscal;
+          // Capturar numero_nf real da SEFAZ
+          const resAny = res as Record<string, unknown>;
+          if (resAny.numero != null) {
+            const num = Number(resAny.numero);
+            if (num > 0) update.numero_nf = num;
+          }
+          const xmlPath = res.caminho_xml_nota_fiscal;
+          if (xmlPath) update.xml_url = this.focusClient.buildFocusNFeUrl(xmlPath);
+          const danfePath = (res as { caminho_danfe?: string }).caminho_danfe ?? res.caminho_pdf_nota_fiscal;
+          if (danfePath) update.pdf_url = this.focusClient.buildFocusNFeUrl(danfePath);
           if (statusNorm !== 'AUTORIZADO' && (res.mensagem_sefaz ?? (res as { mensagem?: string }).mensagem)) {
             update.error_message = (res.mensagem_sefaz ?? (res as { mensagem?: string }).mensagem) ?? undefined;
           }
@@ -99,12 +115,14 @@ export class FiscalSyncService implements OnModuleInit, OnModuleDestroy {
     return { ok, erro, atualizados };
   }
 
-  private normalizarStatus(status: string | undefined): 'AUTORIZADO' | 'REJEITADO' | 'ERRO' | 'PROCESSANDO' {
+  private normalizarStatus(status: string | undefined): 'AUTORIZADO' | 'REJEITADO' | 'CANCELADO' | 'ERRO' | 'PROCESSANDO' {
     if (!status) return 'PROCESSANDO';
     const s = status.toLowerCase();
     if (s === 'autorizado' || s === 'autorizada') return 'AUTORIZADO';
+    if (s === 'cancelado' || s === 'cancelada') return 'CANCELADO';
     if (s === 'rejeitado' || s === 'rejeitada' || s === 'erro') return 'REJEITADO';
     if (s === 'erro_validacao' || s === 'erro_autorizacao') return 'ERRO';
+    if (s === 'processando_cancelamento') return 'PROCESSANDO';
     return 'PROCESSANDO';
   }
 }

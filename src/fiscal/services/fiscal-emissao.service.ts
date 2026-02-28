@@ -16,8 +16,7 @@ export class FiscalEmissaoService {
   ) {}
 
   /**
-   * Idempotência: se já existir fiscal_invoice para o pedido_id com status
-   * AUTORIZADO ou PROCESSANDO, não emite de novo.
+   * Emite NFe para o pedido. Cada emissão é independente: permite múltiplas NFe para a mesma venda.
    */
   async emitir(
     pedidoId: number,
@@ -28,67 +27,18 @@ export class FiscalEmissaoService {
     focus_id: string | null;
     mensagem: string;
   }> {
-    const existente = await this.supabase.findInvoiceByPedidoId(pedidoId);
-
-    if (existente) {
-      if (existente.status === 'AUTORIZADO') {
-        return {
-          invoiceId: existente.id,
-          status: existente.status,
-          focus_id: existente.focus_id,
-          mensagem: 'NFe já emitida para este pedido (idempotência).',
-        };
-      }
-      if (existente.status === 'PROCESSANDO') {
-        return {
-          invoiceId: existente.id,
-          status: existente.status,
-          focus_id: existente.focus_id,
-          mensagem: 'NFe já está em processamento para este pedido.',
-        };
-      }
-      if (existente.status === 'PENDENTE') {
-        const referencia = existente.focus_id!;
-        await this.queue.add(
-          'emitir',
-          {
-            invoiceId: existente.id,
-            pedidoId,
-            referencia,
-            empresa_id: existente.empresa_id,
-            natureza_operacao_id: existente.natureza_operacao_id,
-          } as EmissaoJobPayload,
-          {
-            jobId: existente.id,
-            attempts: 3,
-            backoff: { type: 'exponential', delay: 5000 },
-            removeOnComplete: { count: 1000 },
-          },
-        );
-        return {
-          invoiceId: existente.id,
-          status: 'PROCESSANDO',
-          focus_id: referencia,
-          mensagem: 'Reenvio para fila de emissão (retry).',
-        };
-      }
-      throw new BadRequestException(
-        `Pedido já possui NFe com status ${existente.status}. ${existente.error_message ?? ''}`,
-      );
-    }
-
     const pedido = await this.pedidoData.getPedido(pedidoId);
     if (!pedido) {
       throw new NotFoundException(`Pedido ${pedidoId} não encontrado`);
     }
 
-    const empresaId = overrides?.empresa_id ?? (pedido as { empresa_id?: number }).empresa_id ?? null;
+    const empresaId = overrides?.empresa_id ?? null;
     const naturezaOperacaoId =
       overrides?.natureza_operacao_id ?? (pedido as { natureza_operacao_id?: number }).natureza_operacao_id ?? null;
 
     if (empresaId == null) {
       throw new BadRequestException(
-        'Empresa não informada. Selecione uma empresa no painel ou cadastre empresa_id no pedido.',
+        'Selecione a empresa no formulário (remetente da nota). A empresa não fica cadastrada no pedido.',
       );
     }
     if (naturezaOperacaoId == null) {
@@ -120,6 +70,69 @@ export class FiscalEmissaoService {
         referencia,
         empresa_id: empresaIdNum,
         natureza_operacao_id: naturezaOperacaoIdNum,
+      } as EmissaoJobPayload,
+      {
+        jobId: invoice.id,
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 5000 },
+        removeOnComplete: { count: 1000 },
+      },
+    );
+
+    return {
+      invoiceId: invoice.id,
+      status: 'PROCESSANDO',
+      focus_id: referencia,
+      mensagem: 'NFe enviada para processamento. Aguarde o webhook ou consulte o status.',
+    };
+  }
+
+  /**
+   * Emite NFe enviando o payload editado no modal (não monta a partir do pedido).
+   * Cada emissão é independente: permite múltiplas NFe para a mesma venda.
+   */
+  async emitirComPayload(
+    pedidoId: number,
+    empresaId: number,
+    naturezaId: number,
+    payload: Record<string, unknown>,
+  ): Promise<{
+    invoiceId: string;
+    status: string;
+    focus_id: string | null;
+    mensagem: string;
+  }> {
+    const numeroNf = await this.supabase.getNextNumeroNf(empresaId, SERIE_DEFAULT);
+    const referencia = `PEDIDO-${pedidoId}-${Date.now()}`;
+    const valorNotaRaw = (payload as Record<string, unknown>).valor_total;
+    const valorNota =
+      typeof valorNotaRaw === 'number'
+        ? valorNotaRaw
+        : valorNotaRaw != null && !Number.isNaN(Number(valorNotaRaw))
+        ? Number(valorNotaRaw)
+        : null;
+
+    const invoice = await this.supabase.createInvoice({
+      pedido_id: pedidoId,
+      empresa_id: empresaId,
+      natureza_operacao_id: naturezaId,
+      numero_nf: numeroNf,
+      serie: SERIE_DEFAULT,
+      focus_id: referencia,
+      status: 'PENDENTE',
+      valor_nota: valorNota,
+      payload_json: payload,
+    });
+
+    await this.queue.add(
+      'emitir',
+      {
+        invoiceId: invoice.id,
+        pedidoId,
+        referencia,
+        empresa_id: empresaId,
+        natureza_operacao_id: naturezaId,
+        payload,
       } as EmissaoJobPayload,
       {
         jobId: invoice.id,

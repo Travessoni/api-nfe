@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Naturezas de operação</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="app.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="modal-scroll-lock.js"></script>
+  <style>
+    body { padding: 24px; }
+    .page-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin-bottom: 24px; }
+    .page-header h1 { margin: 0; }
+    .page-header .page-header-divider { width: 1px; height: 24px; background: #27272A; margin: 0 16px; flex-shrink: 0; }
+    .page-header .page-header-filter { position: relative; display: inline-flex; align-items: center; }
+    .page-header .page-header-filter select { min-width: 180px; border: none; background: transparent; appearance: none; -webkit-appearance: none; padding-right: 8px; font-size: inherit; color: inherit; cursor: pointer; outline: none; box-shadow: none; }
+    .page-header .page-header-filter select:focus { outline: none; box-shadow: none; }
+    .naturezas-main .card { padding: 0; }
+    .naturezas-table-wrap { overflow-x: auto; }
+    .naturezas-table { width: 100%; }
+    .naturezas-table th, .naturezas-table td { padding: 0 16px; text-align: left; border-bottom: 1px solid #27272A; }
+    .naturezas-table th { height: 48px; color: #a1a1aa; font-weight: 500; }
+    .naturezas-table td { height: 63px; }
+    .naturezas-table tbody tr:hover { background: #27272A; }
+    .naturezas-table .col-desc { min-width: 200px; }
+    .naturezas-table .col-del { width: 72px; text-align: right; }
+    .naturezas-table .col-del-btns { display: inline-flex; flex-direction: row; align-items: center; justify-content: flex-end; gap: 4px; white-space: nowrap; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="page-header">
+      <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 0;">
+        <a href="nf.html" class="secondary btn-icon-lucide" style="display: inline-flex; align-items: center; gap: 6px; text-decoration: none; color: inherit; margin-right: 16px;"><i data-lucide="arrow-left"></i> Voltar</a>
+        <h1>Naturezas de operação</h1>
+        <span class="page-header-divider" aria-hidden="true"></span>
+        <div class="page-header-filter">
+          <select id="naturezasEmpresaId">
+            <option value="">Todas empresas</option>
+          </select>
+        </div>
+      </div>
+      <div class="context-actions">
+        <button type="button" class="primary" id="btnNovaNatureza" style="display: inline-flex; align-items: center; gap: 6px;"><i data-lucide="plus"></i> Nova natureza</button>
+      </div>
+    </div>
+
+    <div class="naturezas-main">
+      <div class="card">
+        <div class="naturezas-table-wrap">
+          <table class="naturezas-table" id="naturezasTable">
+            <thead>
+              <tr>
+                <th class="col-desc">Descrição</th>
+                <th>Empresa</th>
+                <th class="col-del"></th>
+              </tr>
+            </thead>
+            <tbody id="naturezasTableBody">
+              <!-- rows filled by JS -->
+            </tbody>
+          </table>
+        </div>
+        <div id="naturezasEmpty" class="empty" style="display: none; padding: 24px;">Nenhuma natureza de operação encontrada.</div>
+      </div>
+    </div>
+
+    <div id="naturezasPageMessage" class="message" style="display: none; margin-top: 16px;"></div>
+  </div>
+
+  <!-- Sheet: Natureza da operação (form) -->
+  <div class="sheet-overlay" id="sheetNatureza">
+    <div class="sheet-panel">
+      <div class="sheet-header">
+        <h3>Natureza da operação</h3>
+        <button type="button" class="modal-close" id="sheetNaturezaClose" aria-label="Fechar"><i data-lucide="x"></i></button>
+      </div>
+      <div class="sheet-body">
+        <input type="hidden" id="natId" value="">
+        <div class="form-section">
+          <h4 class="form-section-title">Dados gerais</h4>
+          <div class="form-grid-2">
+            <div class="form-group" style="grid-column: 1 / -1;">
+              <label for="natDescricao">Descrição</label>
+              <input type="text" id="natDescricao" placeholder="Ex: Venda de Mercadoria (Não Contribuinte)">
+            </div>
+            <div class="form-group">
+              <label for="natEmpresa">Empresa</label>
+              <select id="natEmpresa">
+                <option value="">Nenhuma (global)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="natSerie">Série</label>
+              <input type="text" id="natSerie" value="1" placeholder="1">
+            </div>
+            <div class="form-group">
+              <label for="natTipo">Tipo</label>
+              <select id="natTipo">
+                <option value="saida">Saída</option>
+                <option value="entrada">Entrada</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="natRegimeTributario">Código de regime tributário</label>
+              <select id="natRegimeTributario">
+                <option value="1">1 - Simples Nacional</option>
+                <option value="2">2 - Simples Nacional - excesso</option>
+                <option value="3">3 - Regime Normal</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="natIndicadorPresenca">Indicador de presença</label>
+              <select id="natIndicadorPresenca">
+                <option value="1">1 - Operação presencial</option>
+                <option value="2">2 - Operação internet</option>
+                <option value="3">3 - Operação teleatendimento</option>
+                <option value="9" selected>9 - Operação não presencial, outros</option>
+              </select>
+            </div>
+            <div class="toggles-row" style="display: flex; flex-wrap: wrap; gap: 24px 32px; align-items: center; grid-column: 1 / -1;">
+              <div class="form-group toggle-wrap" style="margin: 0; display: inline-flex; align-items: center; gap: 8px;">
+                <span style="font-size: 14px; color: #a1a1aa;">Faturada</span>
+                <button type="button" class="toggle-switch on" id="natFaturada" aria-pressed="true" aria-label="Faturada"></button>
+              </div>
+              <div class="form-group toggle-wrap" style="margin: 0; display: inline-flex; align-items: center; gap: 8px;">
+                <span style="font-size: 14px; color: #a1a1aa;">Consumidor final</span>
+                <button type="button" class="toggle-switch on" id="natConsumidorFinal" aria-pressed="true" aria-label="Consumidor final"></button>
+              </div>
+              <div class="form-group toggle-wrap" style="margin: 0; display: inline-flex; align-items: center; gap: 8px;">
+                <span style="font-size: 14px; color: #a1a1aa;">Operação de devolução</span>
+                <button type="button" class="toggle-switch" id="natOperacaoDevolucao" aria-pressed="false" aria-label="Operação de devolução"></button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <h4 class="form-section-title">Regras de Tributação</h4>
+          <div class="sheet-tabs" id="sheetNaturezaTabs">
+            <button type="button" class="sheet-tab active" data-tab="icms">ICMS</button>
+            <button type="button" class="sheet-tab" data-tab="ipi">IPI</button>
+            <button type="button" class="sheet-tab" data-tab="pis">PIS</button>
+            <button type="button" class="sheet-tab" data-tab="cofins">COFINS</button>
+            <button type="button" class="sheet-tab" data-tab="issqn">ISSQN</button>
+            <button type="button" class="sheet-tab" data-tab="outros">Outros</button>
+            <button type="button" class="sheet-tab" data-tab="retencoes">Retenções</button>
+            <button type="button" class="sheet-tab" data-tab="is">IS</button>
+            <button type="button" class="sheet-tab" data-tab="cbs">CBS</button>
+            <button type="button" class="sheet-tab" data-tab="ibs">IBS</button>
+          </div>
+
+          <div id="sheetNatTabIcms" class="sheet-tab-content active">
+            <table class="regras-table" id="regrasTableIcms">
+              <thead>
+                <tr>
+                  <th class="col-num"></th>
+                  <th>Destino(s)</th>
+                  <th>Produto(s)</th>
+                  <th>CFOP</th>
+                  <th>Aliq. %</th>
+                  <th>Base %</th>
+                  <th>Situação tributária</th>
+                  <th class="col-del"></th>
+                </tr>
+              </thead>
+              <tbody id="regrasBodyIcms"></tbody>
+            </table>
+            <button type="button" class="btn-add-regra" data-tab="icms"><i data-lucide="plus"></i> Adicionar regra</button>
+          </div>
+
+          <div id="sheetNatTabIpi" class="sheet-tab-content">
+            <table class="regras-table" id="regrasTableIpi">
+              <thead>
+                <tr>
+                  <th class="col-num"></th>
+                  <th>Destino(s)</th>
+                  <th>Produto(s)</th>
+                  <th>Aliq. %</th>
+                  <th>Base %</th>
+                  <th>Situação tributária</th>
+                  <th class="col-del"></th>
+                </tr>
+              </thead>
+              <tbody id="regrasBodyIpi"></tbody>
+            </table>
+            <label style="display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 0.9rem;"><input type="checkbox" id="natIncluirFreteBaseIpi" checked> Incluir frete na base do IPI</label>
+            <button type="button" class="btn-add-regra" data-tab="ipi"><i data-lucide="plus"></i> Adicionar regra</button>
+          </div>
+
+          <div id="sheetNatTabPis" class="sheet-tab-content">
+            <table class="regras-table" id="regrasTablePis">
+              <thead>
+                <tr>
+                  <th class="col-num"></th>
+                  <th>Destino(s)</th>
+                  <th>Produto(s)</th>
+                  <th>Alíq. %</th>
+                  <th>Base %</th>
+                  <th>Situação tributária</th>
+                  <th class="col-del"></th>
+                </tr>
+              </thead>
+              <tbody id="regrasBodyPis"></tbody>
+            </table>
+            <button type="button" class="btn-add-regra" data-tab="pis"><i data-lucide="plus"></i> Adicionar regra</button>
+          </div>
+
+          <div id="sheetNatTabCofins" class="sheet-tab-content">
+            <table class="regras-table" id="regrasTableCofins">
+              <thead>
+                <tr>
+                  <th class="col-num"></th>
+                  <th>Destino(s)</th>
+                  <th>Produto(s)</th>
+                  <th>Alíq. %</th>
+                  <th>Base %</th>
+                  <th>Situação tributária</th>
+                  <th class="col-del"></th>
+                </tr>
+              </thead>
+              <tbody id="regrasBodyCofins"></tbody>
+            </table>
+            <button type="button" class="btn-add-regra" data-tab="cofins"><i data-lucide="plus"></i> Adicionar regra</button>
+          </div>
+
+          <div id="sheetNatTabIssqn" class="sheet-tab-content">
+            <table class="regras-table" id="regrasTableIssqn">
+              <thead>
+                <tr>
+                  <th class="col-num"></th>
+                  <th>Destino(s)</th>
+                  <th>Produto(s)</th>
+                  <th>Alíq. %</th>
+                  <th>Base %</th>
+                  <th>Situação tributária</th>
+                  <th class="col-del"></th>
+                </tr>
+              </thead>
+              <tbody id="regrasBodyIssqn"></tbody>
+            </table>
+            <button type="button" class="btn-add-regra" data-tab="issqn"><i data-lucide="plus"></i> Adicionar regra</button>
+          </div>
+
+          <div id="sheetNatTabOutros" class="sheet-tab-content">
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="natPresumidoPisCofins">Presumido no cálculo do PIS/COFINS</label>
+                <select id="natPresumidoPisCofins">
+                  <option value="sim" selected>Sim</option>
+                  <option value="nao">Não</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="natSomarOutrasDespesas" class="label-with-info">Somar outras despesas <span class="info-icon" title="Incluir outras despesas na base de cálculo">&#8505;</span></label>
+                <select id="natSomarOutrasDespesas">
+                  <option value="nao" selected>Não</option>
+                  <option value="sim">Sim</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="natAliquotaFunrural">Alíquota funrural (%)</label>
+                <input type="number" id="natAliquotaFunrural" value="0" step="0.01" min="0" placeholder="0,00">
+              </div>
+              <div class="form-group">
+                <label for="natCompraProdutorRural">Compra de produtor rural</label>
+                <select id="natCompraProdutorRural">
+                  <option value="nao" selected>Não</option>
+                  <option value="sim">Sim</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="natDescontarFunrural">Descontar funrural do total faturado</label>
+                <select id="natDescontarFunrural">
+                  <option value="sim" selected>Sim</option>
+                  <option value="nao">Não</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="natTipoPercAproxTrib" class="label-with-info">Tipo % Aprox. Trib. <span class="info-icon" title="Tipo de percentual aproximado de tributação">&#8505;</span></label>
+                <select id="natTipoPercAproxTrib">
+                  <option value="aliquota_tabela" selected>Alíquota Tabela</option>
+                  <option value="outro">Outro</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="natTipoDesconto" class="label-with-info">Tipo desconto <span class="info-icon" title="Condicional ou incondicional">&#8505;</span></label>
+                <select id="natTipoDesconto">
+                  <option value="condicional" selected>Condicional</option>
+                  <option value="incondicional">Incondicional</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div id="sheetNatTabRetencoes" class="sheet-tab-content">
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="natPossuiRetencaoCsrf" class="label-with-info">Possui retenção de CSRF <span class="info-icon" title="Contribuição para o Seguro de Riscos de Fenômenos da Natureza">&#8505;</span></label>
+                <select id="natPossuiRetencaoCsrf">
+                  <option value="nao" selected>Não</option>
+                  <option value="sim">Sim</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="natPossuiRetencaoIr">Possui retenção de IR</label>
+                <select id="natPossuiRetencaoIr">
+                  <option value="nao" selected>Não</option>
+                  <option value="sim">Sim</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="natAliquotaCsrfRetido">Alíquota CSRF retido %</label>
+                <input type="number" id="natAliquotaCsrfRetido" value="0" step="0.0001" min="0" placeholder="0,0000">
+              </div>
+              <div class="form-group">
+                <label for="natAliquotaIrRetido">Alíquota IR retido %</label>
+                <input type="number" id="natAliquotaIrRetido" value="0" step="0.0001" min="0" placeholder="0,0000">
+              </div>
+            </div>
+          </div>
+
+          <div id="sheetNatTabIs" class="sheet-tab-content">
+            <table class="regras-table" id="regrasTableIs">
+              <thead>
+                <tr>
+                  <th class="col-num"></th>
+                  <th>Destino(s)</th>
+                  <th>Produto(s)</th>
+                  <th>Alíq. %</th>
+                  <th>Base %</th>
+                  <th>Situação tributária</th>
+                  <th class="col-del"></th>
+                </tr>
+              </thead>
+              <tbody id="regrasBodyIs"></tbody>
+            </table>
+            <button type="button" class="btn-add-regra" data-tab="is"><i data-lucide="plus"></i> Adicionar regra</button>
+          </div>
+
+          <div id="sheetNatTabCbs" class="sheet-tab-content">
+            <table class="regras-table" id="regrasTableCbs">
+              <thead>
+                <tr>
+                  <th class="col-num"></th>
+                  <th>Destino(s)</th>
+                  <th>Produto(s)</th>
+                  <th>Alíq. %</th>
+                  <th>Base %</th>
+                  <th>Situação tributária</th>
+                  <th class="col-del"></th>
+                </tr>
+              </thead>
+              <tbody id="regrasBodyCbs"></tbody>
+            </table>
+            <button type="button" class="btn-add-regra" data-tab="cbs"><i data-lucide="plus"></i> Adicionar regra</button>
+          </div>
+
+          <div id="sheetNatTabIbs" class="sheet-tab-content">
+            <table class="regras-table" id="regrasTableIbs">
+              <thead>
+                <tr>
+                  <th class="col-num"></th>
+                  <th>Destino(s)</th>
+                  <th>Produto(s)</th>
+                  <th>Alíq. %</th>
+                  <th>Base %</th>
+                  <th>Situação tributária</th>
+                  <th class="col-del"></th>
+                </tr>
+              </thead>
+              <tbody id="regrasBodyIbs"></tbody>
+            </table>
+            <button type="button" class="btn-add-regra" data-tab="ibs"><i data-lucide="plus"></i> Adicionar regra</button>
+          </div>
+        </div>
+      </div>
+      <div class="sheet-footer">
+        <button type="button" class="secondary" id="sheetNaturezaCancel">Cancelar</button>
+        <button type="button" class="primary" id="sheetNaturezaSave">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Adicionar regra (ICMS ou placeholder) -->
+  <div class="modal-regra-overlay" id="modalAdicionarRegra">
+    <div class="modal-regra-panel" id="modalRegraPanel">
+      <div class="modal-regra-header">
+        <h3 id="modalRegraTitulo">Adicionar regra</h3>
+        <button type="button" class="modal-close" id="modalAdicionarRegraClose" aria-label="Fechar"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-regra-body" id="modalRegraBody">
+        <!-- Conteúdo genérico (outras abas) -->
+        <div id="modalRegraContentGeneric">
+          <p style="color: #a1a1aa; font-size: 0.9rem;">Conteúdo do modal será implementado em breve.</p>
+        </div>
+        <!-- Conteúdo ICMS -->
+        <div id="modalRegraContentIcms" style="display: none;">
+          <div class="form-section modal-regra-section">
+            <h4 class="form-section-title">Quando for para</h4>
+            <p class="modal-regra-selected" id="modalIcmsDestinosResumo">MG</p>
+            <div class="modal-uf-grid" id="modalIcmsUfGrid">
+              <label><input type="checkbox" name="modalIcmsUf" value="AC"> AC</label>
+              <label><input type="checkbox" name="modalIcmsUf" value="AL"> AL</label>
+              <label><input type="checkbox" name="modalIcmsUf" value="AM"> AM</label>
+              <label><input type="checkbox" name="modalIcmsUf" value="AP"> AP</label>
+              <label><input type="checkbox" name="modalIcmsUf" value="BA"> BA</label>
+              <label><input type="checkbox" name="modalIcmsUf" value="CE"> CE</label>
+              <label><input type="checkbox" name="modalIcmsUf" value="ES"> ES</label>
+              <label><input type="checkbox" name="modalIcmsUf" value="GO"> GO</label>
+              <label><input type="checkbox" name="modalIcmsUf" value="MA"> MA</label>
+              <label><input type="checkbox" name="modalIcmsUf" value="MG" checked> MG</label>
+              <label><input type="checkbox" name="modalIcmsUf" value="MS"> MS</label>
+              <label><input type="checkbox" name="modalIcmsUf" value="MT"> MT</label>
+              <label><input type="checkbox" name="modalIcmsUf" value="PA"> PA</label>
+              <label><input type="checkbox" name="modalIcmsUf" value="PB"> PB</label>
+              <label><input type="checkbox" name="modalIcmsUf" value="PE"> PE</label>
+              <label><input type="checkbox" name="modalIcmsUf" value="PI"> PI</label>
+              <label><input type="checkbox" name="modalIcmsUf" value="PR"> PR</label>
+              <label><input type="checkbox" name="modalIcmsUf" value="RJ"> RJ</label>
+              <label><input type="checkbox" name="modalIcmsUf" value="RN"> RN</label>
+              <label><input type="checkbox" name="modalIcmsUf" value="RO"> RO</label>
+              <label><input type="checkbox" name="modalIcmsUf" value="RR"> RR</label>
+              <label><input type="checkbox" name="modalIcmsUf" value="RS"> RS</label>
+              <label><input type="checkbox" name="modalIcmsUf" value="SC"> SC</label>
+              <label><input type="checkbox" name="modalIcmsUf" value="SE"> SE</label>
+              <label><input type="checkbox" name="modalIcmsUf" value="SP"> SP</label>
+              <label><input type="checkbox" name="modalIcmsUf" value="TO"> TO</label>
+            </div>
+          </div>
+          <div class="form-section modal-regra-section">
+            <h4 class="form-section-title">Usar a seguinte regra de tributação</h4>
+            <!-- Regime Normal (2 ou 3): CST -->
+            <div id="modalIcmsCstBlock" class="form-group">
+              <label for="modalIcmsSituacaoTributaria">Situação tributária (CST)</label>
+              <select id="modalIcmsSituacaoTributaria">
+                <option value="00">00 - Tributada integralmente</option>
+                <option value="10">10 - Tributada com ST</option>
+                <option value="20">20 - Tributada com redução BC</option>
+                <option value="40">40 - Isenta</option>
+                <option value="41">41 - Não tributada</option>
+                <option value="50">50 - Suspensão</option>
+                <option value="51">51 - Diferimento</option>
+                <option value="60">60 - Cobrado anteriormente por ST</option>
+                <option value="70">70 - Tributada com redução BC e ST</option>
+                <option value="90">90 - Outras</option>
+              </select>
+            </div>
+            <!-- Simples Nacional (1): CSOSN -->
+            <div id="modalIcmsCsosnBlock" class="form-group" style="display: none;">
+              <label for="modalIcmsCsosn">Código de situação da operação - Simples nacional (CSOSN)</label>
+              <select id="modalIcmsCsosn">
+                <option value="02">02 - Tributação monofásica própria sobre combustíveis</option>
+                <option value="15">15 - Tributação monofásica própria e com responsabilidade pela retenção sobre combustíveis</option>
+                <option value="53">53 - Tributação monofásica sobre combustíveis com recolhimento diferido</option>
+                <option value="61">61 - Tributação monofásica sobre combustíveis cobrada anteriormente</option>
+                <option value="101">101 - Tributada com permissão de crédito</option>
+                <option value="102" selected>102 - Tributada sem permissão de crédito</option>
+                <option value="103">103 - Isenção do ICMS para faixa de receita bruta</option>
+                <option value="201">201 - Tributada com permissão de crédito e com cobrança do ICMS por ST</option>
+                <option value="202">202 - Tributada sem permissão de crédito e com cobrança do ICMS por ST</option>
+                <option value="203">203 - Isenção do ICMS para faixa de receita bruta e com cobrança do ICMS por ST</option>
+                <option value="300">300 - Imune</option>
+                <option value="400">400 - Não tributada</option>
+                <option value="500">500 - ICMS cobrado anteriormente por ST ou por antecipação</option>
+                <option value="900">900 - Outros</option>
+              </select>
+            </div>
+            <div class="form-row-icms-regra form-grid-2">
+              <div class="form-group">
+                <label for="modalIcmsCfop">CFOP</label>
+                <div class="input-with-icon">
+                  <input type="text" id="modalIcmsCfop" placeholder="x102" value="x102">
+                  <button type="button" class="input-icon-btn" aria-label="Buscar"><i data-lucide="search"></i></button>
+                </div>
+              </div>
+              <div class="form-group modal-icms-regime-normal">
+                <label for="modalIcmsAliq">Alíq. ICMS %</label>
+                <input type="number" id="modalIcmsAliq" step="0.0001" value="6" placeholder="6,0000">
+              </div>
+              <div class="form-group modal-icms-regime-normal">
+                <label for="modalIcmsPresumido">Presumido %</label>
+                <input type="number" id="modalIcmsPresumido" step="0.0001" value="0" placeholder="0,0000">
+              </div>
+              <div class="form-group modal-icms-regime-normal">
+                <label for="modalIcmsFcp" class="label-with-info">% FCP <span class="info-icon" title="Fundo de Combate à Pobreza">&#8505;</span></label>
+                <input type="number" id="modalIcmsFcp" step="0.01" value="0" placeholder="0,00">
+              </div>
+              <div class="form-group modal-icms-regime-normal">
+                <label for="modalIcmsModalidadeBc">Modalidade BC</label>
+                <select id="modalIcmsModalidadeBc">
+                  <option value="0">Margem valor agregado</option>
+                  <option value="1">Pauta</option>
+                  <option value="2">Valor operação</option>
+                  <option value="3" selected>Valor da operação</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group modal-icms-regime-normal">
+              <label for="modalIcmsCodBeneficio" class="label-with-info">Código do benefício fiscal na UF <a href="#" class="btn-link" id="modalIcmsConsultarBeneficio">Consultar</a></label>
+              <input type="text" id="modalIcmsCodBeneficio" placeholder="">
+            </div>
+          </div>
+          <div class="form-section modal-regra-section" id="modalIcmsPartilhaSection">
+            <h4 class="form-section-title">ICMS partilha</h4>
+            <div id="modalIcmsPartilhaNormalBlock">
+              <div class="form-group">
+                <label for="modalIcmsPartilhaTipo">Tipo de tributação</label>
+                <select id="modalIcmsPartilhaTipo">
+                  <option value="isento" selected>Isento</option>
+                  <option value="tributado">Tributado</option>
+                  <option value="outros">Outros</option>
+                </select>
+              </div>
+            </div>
+            <div id="modalIcmsPartilhaSimplesBlock" style="display: none;">
+              <div class="form-group">
+                <label for="modalIcmsPartilhaTipoSimples">Tipo de tributação</label>
+                <select id="modalIcmsPartilhaTipoSimples">
+                  <option value="normal">Normal</option>
+                  <option value="isento" selected>Isento</option>
+                </select>
+              </div>
+              <div class="form-row-icms-regra form-grid-2">
+                <div class="form-group">
+                  <label for="modalIcmsPartilhaBase">Base de cálculo (%)</label>
+                  <input type="number" id="modalIcmsPartilhaBase" step="0.01" min="0" value="0" placeholder="0,00">
+                </div>
+                <div class="form-group">
+                  <label for="modalIcmsPartilhaAliqInterna">Alíquota Interna UF de destino (%)</label>
+                  <input type="number" id="modalIcmsPartilhaAliqInterna" step="0.01" min="0" value="0" placeholder="0,00">
+                </div>
+                <div class="form-group">
+                  <label for="modalIcmsPartilhaFcp" class="label-with-info">Alíquota do FCP (%) <span class="info-icon" title="Fundo de Combate à Pobreza">&#8505;</span></label>
+                  <input type="number" id="modalIcmsPartilhaFcp" step="0.01" min="0" value="0" placeholder="0,00">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Conteúdo IPI -->
+        <div id="modalRegraContentIpi" style="display: none;">
+          <div class="form-section modal-regra-section">
+            <h4 class="form-section-title">Quando for para</h4>
+            <p class="modal-regra-selected" id="modalIpiDestinosResumo">Qualquer</p>
+            <div class="modal-uf-grid" id="modalIpiUfGrid">
+              <label><input type="checkbox" name="modalIpiUf" value="AC"> AC</label>
+              <label><input type="checkbox" name="modalIpiUf" value="AL"> AL</label>
+              <label><input type="checkbox" name="modalIpiUf" value="AM"> AM</label>
+              <label><input type="checkbox" name="modalIpiUf" value="AP"> AP</label>
+              <label><input type="checkbox" name="modalIpiUf" value="BA"> BA</label>
+              <label><input type="checkbox" name="modalIpiUf" value="CE"> CE</label>
+              <label><input type="checkbox" name="modalIpiUf" value="ES"> ES</label>
+              <label><input type="checkbox" name="modalIpiUf" value="GO"> GO</label>
+              <label><input type="checkbox" name="modalIpiUf" value="MA"> MA</label>
+              <label><input type="checkbox" name="modalIpiUf" value="MG"> MG</label>
+              <label><input type="checkbox" name="modalIpiUf" value="MS"> MS</label>
+              <label><input type="checkbox" name="modalIpiUf" value="MT"> MT</label>
+              <label><input type="checkbox" name="modalIpiUf" value="PA"> PA</label>
+              <label><input type="checkbox" name="modalIpiUf" value="PB"> PB</label>
+              <label><input type="checkbox" name="modalIpiUf" value="PE"> PE</label>
+              <label><input type="checkbox" name="modalIpiUf" value="PI"> PI</label>
+              <label><input type="checkbox" name="modalIpiUf" value="PR"> PR</label>
+              <label><input type="checkbox" name="modalIpiUf" value="RJ"> RJ</label>
+              <label><input type="checkbox" name="modalIpiUf" value="RN"> RN</label>
+              <label><input type="checkbox" name="modalIpiUf" value="RO"> RO</label>
+              <label><input type="checkbox" name="modalIpiUf" value="RR"> RR</label>
+              <label><input type="checkbox" name="modalIpiUf" value="RS"> RS</label>
+              <label><input type="checkbox" name="modalIpiUf" value="SC"> SC</label>
+              <label><input type="checkbox" name="modalIpiUf" value="SE"> SE</label>
+              <label><input type="checkbox" name="modalIpiUf" value="SP"> SP</label>
+              <label><input type="checkbox" name="modalIpiUf" value="TO"> TO</label>
+            </div>
+          </div>
+          <div class="form-section modal-regra-section">
+            <h4 class="form-section-title">Usar a seguinte regra de tributação</h4>
+            <div class="form-group">
+              <label for="modalIpiSituacaoTributaria">Situação tributária</label>
+              <select id="modalIpiSituacaoTributaria">
+                <option value="">Sem IPI</option>
+                <option value="50">50 - Saída tributada</option>
+                <option value="51">51 - Saída tributária com alíquota zero</option>
+                <option value="52">52 - Saída isenta</option>
+                <option value="53">53 - Saída não-tributada</option>
+                <option value="54">54 - Saída imune</option>
+                <option value="55">55 - Saída com suspensão</option>
+                <option value="99">99 - Outras</option>
+              </select>
+            </div>
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="modalIpiAliquota">Alíquota %</label>
+                <input type="number" id="modalIpiAliquota" step="0.0001" min="0" value="0" placeholder="0,0000">
+              </div>
+              <div class="form-group">
+                <label for="modalIpiBase">Base %</label>
+                <input type="number" id="modalIpiBase" step="0.0001" min="0" value="100" placeholder="100,0000">
+              </div>
+              <div class="form-group">
+                <label for="modalIpiCodEnquadramento">Cód. de enquadramento</label>
+                <input type="text" id="modalIpiCodEnquadramento" placeholder="999" value="999">
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Conteúdo PIS -->
+        <div id="modalRegraContentPis" style="display: none;">
+          <div class="form-section modal-regra-section">
+            <h4 class="form-section-title">Quando for para</h4>
+            <p class="modal-regra-selected" id="modalPisDestinosResumo">Qualquer estado</p>
+            <div class="modal-uf-grid" id="modalPisUfGrid">
+              <label><input type="checkbox" name="modalPisUf" value="AC"> AC</label>
+              <label><input type="checkbox" name="modalPisUf" value="AL"> AL</label>
+              <label><input type="checkbox" name="modalPisUf" value="AM"> AM</label>
+              <label><input type="checkbox" name="modalPisUf" value="AP"> AP</label>
+              <label><input type="checkbox" name="modalPisUf" value="BA"> BA</label>
+              <label><input type="checkbox" name="modalPisUf" value="CE"> CE</label>
+              <label><input type="checkbox" name="modalPisUf" value="ES"> ES</label>
+              <label><input type="checkbox" name="modalPisUf" value="GO"> GO</label>
+              <label><input type="checkbox" name="modalPisUf" value="MA"> MA</label>
+              <label><input type="checkbox" name="modalPisUf" value="MG"> MG</label>
+              <label><input type="checkbox" name="modalPisUf" value="MS"> MS</label>
+              <label><input type="checkbox" name="modalPisUf" value="MT"> MT</label>
+              <label><input type="checkbox" name="modalPisUf" value="PA"> PA</label>
+              <label><input type="checkbox" name="modalPisUf" value="PB"> PB</label>
+              <label><input type="checkbox" name="modalPisUf" value="PE"> PE</label>
+              <label><input type="checkbox" name="modalPisUf" value="PI"> PI</label>
+              <label><input type="checkbox" name="modalPisUf" value="PR"> PR</label>
+              <label><input type="checkbox" name="modalPisUf" value="RJ"> RJ</label>
+              <label><input type="checkbox" name="modalPisUf" value="RN"> RN</label>
+              <label><input type="checkbox" name="modalPisUf" value="RO"> RO</label>
+              <label><input type="checkbox" name="modalPisUf" value="RR"> RR</label>
+              <label><input type="checkbox" name="modalPisUf" value="RS"> RS</label>
+              <label><input type="checkbox" name="modalPisUf" value="SC"> SC</label>
+              <label><input type="checkbox" name="modalPisUf" value="SE"> SE</label>
+              <label><input type="checkbox" name="modalPisUf" value="SP"> SP</label>
+              <label><input type="checkbox" name="modalPisUf" value="TO"> TO</label>
+            </div>
+          </div>
+          <div class="form-section modal-regra-section">
+            <h4 class="form-section-title">Usar a seguinte regra de tributação</h4>
+            <div class="form-group">
+              <label for="modalPisSituacaoTributaria">Situação tributária</label>
+              <select id="modalPisSituacaoTributaria">
+                <option value="">Selecionar</option>
+                <option value="01">01 - Operação tributável com alíquota básica</option>
+                <option value="02">02 - Operação tributável com alíquota diferenciada</option>
+                <option value="04">04 - Operação tributável monofásica (revenda alíq. zero)</option>
+                <option value="05">05 - Operação tributável por ST</option>
+                <option value="06">06 - Operação tributável (alíquota zero)</option>
+                <option value="07">07 - Operação isenta da contribuição</option>
+                <option value="08">08 - Operação sem incidência da contribuição</option>
+                <option value="09">09 - Operação com suspensão da contribuição</option>
+                <option value="49" selected>49 - Outras Operações de Saída</option>
+              </select>
+            </div>
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="modalPisAliquota">Alíquota %</label>
+                <input type="number" id="modalPisAliquota" step="0.0001" min="0" value="0" placeholder="0,0000">
+              </div>
+              <div class="form-group">
+                <label for="modalPisBase">Base %</label>
+                <input type="number" id="modalPisBase" step="0.0001" min="0" value="0" placeholder="0,0000">
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Conteúdo COFINS -->
+        <div id="modalRegraContentCofins" style="display: none;">
+          <div class="form-section modal-regra-section">
+            <h4 class="form-section-title">Quando for para</h4>
+            <p class="modal-regra-selected" id="modalCofinsDestinosResumo">Qualquer estado</p>
+            <div class="modal-uf-grid" id="modalCofinsUfGrid">
+              <label><input type="checkbox" name="modalCofinsUf" value="AC"> AC</label>
+              <label><input type="checkbox" name="modalCofinsUf" value="AL"> AL</label>
+              <label><input type="checkbox" name="modalCofinsUf" value="AM"> AM</label>
+              <label><input type="checkbox" name="modalCofinsUf" value="AP"> AP</label>
+              <label><input type="checkbox" name="modalCofinsUf" value="BA"> BA</label>
+              <label><input type="checkbox" name="modalCofinsUf" value="CE"> CE</label>
+              <label><input type="checkbox" name="modalCofinsUf" value="ES"> ES</label>
+              <label><input type="checkbox" name="modalCofinsUf" value="GO"> GO</label>
+              <label><input type="checkbox" name="modalCofinsUf" value="MA"> MA</label>
+              <label><input type="checkbox" name="modalCofinsUf" value="MG"> MG</label>
+              <label><input type="checkbox" name="modalCofinsUf" value="MS"> MS</label>
+              <label><input type="checkbox" name="modalCofinsUf" value="MT"> MT</label>
+              <label><input type="checkbox" name="modalCofinsUf" value="PA"> PA</label>
+              <label><input type="checkbox" name="modalCofinsUf" value="PB"> PB</label>
+              <label><input type="checkbox" name="modalCofinsUf" value="PE"> PE</label>
+              <label><input type="checkbox" name="modalCofinsUf" value="PI"> PI</label>
+              <label><input type="checkbox" name="modalCofinsUf" value="PR"> PR</label>
+              <label><input type="checkbox" name="modalCofinsUf" value="RJ"> RJ</label>
+              <label><input type="checkbox" name="modalCofinsUf" value="RN"> RN</label>
+              <label><input type="checkbox" name="modalCofinsUf" value="RO"> RO</label>
+              <label><input type="checkbox" name="modalCofinsUf" value="RR"> RR</label>
+              <label><input type="checkbox" name="modalCofinsUf" value="RS"> RS</label>
+              <label><input type="checkbox" name="modalCofinsUf" value="SC"> SC</label>
+              <label><input type="checkbox" name="modalCofinsUf" value="SE"> SE</label>
+              <label><input type="checkbox" name="modalCofinsUf" value="SP"> SP</label>
+              <label><input type="checkbox" name="modalCofinsUf" value="TO"> TO</label>
+            </div>
+          </div>
+          <div class="form-section modal-regra-section">
+            <h4 class="form-section-title">Usar a seguinte regra de tributação</h4>
+            <div class="form-group">
+              <label for="modalCofinsSituacaoTributaria">Situação tributária</label>
+              <select id="modalCofinsSituacaoTributaria">
+                <option value="">Selecionar</option>
+                <option value="01">01 - Operação tributável com alíquota básica</option>
+                <option value="02">02 - Operação tributável com alíquota diferenciada</option>
+                <option value="04">04 - Operação tributável monofásica (revenda alíq. zero)</option>
+                <option value="05">05 - Operação tributável por ST</option>
+                <option value="06">06 - Operação tributável (alíquota zero)</option>
+                <option value="07">07 - Operação isenta da contribuição</option>
+                <option value="08">08 - Operação sem incidência da contribuição</option>
+                <option value="09">09 - Operação com suspensão da contribuição</option>
+                <option value="49" selected>49 - Outras Operações de Saída</option>
+              </select>
+            </div>
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="modalCofinsAliquota">Alíquota %</label>
+                <input type="number" id="modalCofinsAliquota" step="0.0001" min="0" value="0" placeholder="0,0000">
+              </div>
+              <div class="form-group">
+                <label for="modalCofinsBase">Base %</label>
+                <input type="number" id="modalCofinsBase" step="0.0001" min="0" value="0" placeholder="0,0000">
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Conteúdo ISSQN -->
+        <div id="modalRegraContentIssqn" style="display: none;">
+          <div class="form-section modal-regra-section">
+            <h4 class="form-section-title">Usar a seguinte regra de tributação</h4>
+            <div class="form-group">
+              <label for="modalIssqnSituacaoTributaria">Situação tributária</label>
+              <select id="modalIssqnSituacaoTributaria">
+                <option value="">Selecionar</option>
+                <option value="isento" selected>Isento</option>
+                <option value="N">N - Não tributado</option>
+                <option value="S">S - Tributado</option>
+                <option value="I">I - Isento (código)</option>
+                <option value="J">J - Imune</option>
+                <option value="F">F - Exigibilidade suspensa</option>
+              </select>
+            </div>
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="modalIssqnAliquota">Alíquota %</label>
+                <input type="number" id="modalIssqnAliquota" step="0.0001" min="0" value="0" placeholder="0,0000">
+              </div>
+              <div class="form-group">
+                <label for="modalIssqnBase">Base %</label>
+                <input type="number" id="modalIssqnBase" step="0.0001" min="0" value="0" placeholder="0,0000">
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="modalIssqnDescontar">Descontar ISS do total da nota</label>
+              <select id="modalIssqnDescontar">
+                <option value="">—</option>
+                <option value="sim">Sim</option>
+                <option value="nao">Não</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="modalIssqnReter">Reter ISS</label>
+              <select id="modalIssqnReter">
+                <option value="nao" selected>Não</option>
+                <option value="sim">Sim</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-regra-footer">
+        <button type="button" class="secondary" id="modalAdicionarRegraFechar">Cancelar</button>
+        <button type="button" class="primary" id="modalRegraSalvar" style="display: none;">Salvar regra</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="naturezas.js"></script>
+</body>
+</html>
