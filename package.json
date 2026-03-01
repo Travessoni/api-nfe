@@ -8,16 +8,18 @@
     "start": "node dist/main",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
-    "start:prod": "node dist/main"
+    "start:prod": "node dist/main",
+    "deploy": "wrangler deploy",
+    "preview": "wrangler dev"
   },
   "dependencies": {
+    "@nestjs/bullmq": "^10.0.1",
     "@nestjs/common": "^10.3.0",
+    "@nestjs/config": "^3.1.1",
     "@nestjs/core": "^10.3.0",
     "@nestjs/platform-express": "^10.3.0",
-    "@nestjs/config": "^3.1.1",
     "@supabase/supabase-js": "^2.39.0",
     "bullmq": "^5.1.0",
-    "@nestjs/bullmq": "^10.0.1",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.0",
     "reflect-metadata": "^0.2.1",
@@ -27,6 +29,7 @@
     "@nestjs/cli": "^10.2.1",
     "@types/express": "^4.17.21",
     "@types/node": "^20.10.0",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "wrangler": "^4.69.0"
   }
 }
