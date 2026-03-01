@@ -330,6 +330,7 @@ export class PedidoDataService {
         .from('enderecos')
         .select('*')
         .eq('contato_id', contatoId)
+        .limit(1)
         .maybeSingle();
       if (error) return null;
       return data as EnderecoRow | null;
