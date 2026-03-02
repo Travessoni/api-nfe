@@ -787,38 +787,40 @@ function getPayloadFromForm() {
   });
 
   // Transport Data
-  var trModalidade = get('nf_modalidade_frete');
+  var trModalidade = get('nf_frete_por_conta');
   if (trModalidade) payload.modalidade_frete = trModalidade;
-  var trNome = get('nf_nome_transportador');
+  else payload.modalidade_frete = '9'; // default Sem frete
+
+  var trNome = get('nf_transp_nome');
   if (trNome) payload.nome_transportador = trNome;
 
-  var trCnpjCpf = get('nf_cnpj_cpf_transportador');
+  var trCnpjCpf = get('nf_transp_cnpj_cpf');
   if (trCnpjCpf) {
     trCnpjCpf = trCnpjCpf.replace(/\D/g, '');
     if (trCnpjCpf.length === 11) payload.cpf_transportador = trCnpjCpf;
     else if (trCnpjCpf.length === 14) payload.cnpj_transportador = trCnpjCpf;
   }
-  var trIe = get('nf_ie_transportador');
+  var trIe = get('nf_transp_ie');
   if (trIe) payload.inscricao_estadual_transportador = trIe.replace(/\D/g, '');
-  var trAddress = get('nf_endereco_transportador');
-  if (trAddress) payload.endereco_transportador = trAddress;
-  var trCity = get('nf_municipio_transportador');
+  var trAddress = get('nf_transp_endereco');
+  if (trAddress && trAddress !== 'Sem endereço cadastrado') payload.endereco_transportador = trAddress;
+  var trCity = get('nf_transp_municipio');
   if (trCity) payload.municipio_transportador = trCity;
-  var trUf = get('nf_uf_transportador');
+  var trUf = get('nf_transp_uf');
   if (trUf) payload.uf_transportador = trUf;
 
   // Volume Data
-  var volQtde = parseInt(get('nf_quantidade_volumes'), 10);
+  var volQtde = parseInt(get('nf_volume_quantidade'), 10);
   if (!isNaN(volQtde) && volQtde > 0) payload.quantidade_volumes = volQtde;
-  var volEspecie = get('nf_especie_volumes');
+  var volEspecie = get('nf_volume_especie'); // not in HTML but keep just in case
   if (volEspecie) payload.especie_volumes = volEspecie;
-  var volMarca = get('nf_marca_volumes');
+  var volMarca = get('nf_volume_marca');
   if (volMarca) payload.marca_volumes = volMarca;
-  var volNum = get('nf_numeracao_volumes');
+  var volNum = get('nf_volume_numeracao');
   if (volNum) payload.numeracao_volumes = volNum;
-  var volPesoB = parseFloat(get('nf_peso_bruto_volumes'));
+  var volPesoB = parseFloat(get('nf_volume_peso_bruto'));
   if (!isNaN(volPesoB) && volPesoB > 0) payload.peso_bruto_volumes = volPesoB;
-  var volPesoL = parseFloat(get('nf_peso_liquido_volumes'));
+  var volPesoL = parseFloat(get('nf_volume_peso_liquido'));
   if (!isNaN(volPesoL) && volPesoL > 0) payload.peso_liquido_volumes = volPesoL;
 
   return payload;
@@ -1080,23 +1082,29 @@ function fillFormFromPayload(p) {
   setNum('nf_total_tributos', p.valor_aproximado_tributos);
 
   // Transport & Volume restoring
-  set('nf_modalidade_frete', p.modalidade_frete != null ? String(p.modalidade_frete) : '0');
+  set('nf_frete_por_conta', p.modalidade_frete != null ? String(p.modalidade_frete) : '9');
   set('nf_transp_nome', p.nome_transportador || '');
-  set('nf_nome_transportador', p.nome_transportador || '');
   set('nf_transp_cnpj_cpf', p.cnpj_transportador || p.cpf_transportador || '');
-  set('nf_cnpj_cpf_transportador', p.cnpj_transportador || p.cpf_transportador || '');
-  set('nf_ie_transportador', p.inscricao_estadual_transportador || '');
-  set('nf_endereco_transportador', p.endereco_transportador || '');
-  set('nf_municipio_transportador', p.municipio_transportador || '');
-  set('nf_uf_transportador', p.uf_transportador || '');
-  if (typeof setTransporteMode === 'function') setTransporteMode(p.modalidade_frete || '0');
+  set('nf_transp_ie', p.inscricao_estadual_transportador || '');
+  set('nf_transp_endereco', p.endereco_transportador || '');
+  set('nf_transp_municipio', p.municipio_transportador || '');
+  set('nf_transp_uf', p.uf_transportador || '');
 
-  set('nf_quantidade_volumes', p.quantidade_volumes != null ? p.quantidade_volumes : '');
-  set('nf_especie_volumes', p.especie_volumes || '');
-  set('nf_marca_volumes', p.marca_volumes || '');
-  set('nf_numeracao_volumes', p.numeracao_volumes || '');
-  set('nf_peso_bruto_volumes', p.peso_bruto_volumes != null ? p.peso_bruto_volumes : '');
-  set('nf_peso_liquido_volumes', p.peso_liquido_volumes != null ? p.peso_liquido_volumes : '');
+  // if custom modalidade exists trigger its UI block
+  if (p.modalidade_frete != null && p.modalidade_frete !== '9') {
+    var transpSelect = document.getElementById('nf_transporte');
+    if (transpSelect) {
+      transpSelect.value = 'manual';
+      if (typeof setTransporteMode === 'function') setTransporteMode('manual');
+    }
+  }
+
+  set('nf_volume_quantidade', p.quantidade_volumes != null ? p.quantidade_volumes : '');
+  set('nf_volume_especie', p.especie_volumes || '');
+  set('nf_volume_marca', p.marca_volumes || '');
+  set('nf_volume_numeracao', p.numeracao_volumes || '');
+  set('nf_volume_peso_bruto', p.peso_bruto_volumes != null ? p.peso_bruto_volumes : '');
+  set('nf_volume_peso_liquido', p.peso_liquido_volumes != null ? p.peso_liquido_volumes : '');
   var infoContrib = (p.informacoes_adicionais_contribuinte != null ? String(p.informacoes_adicionais_contribuinte) : '').trim();
   set('nf_info_complementares', infoContrib);
   var tbody = document.getElementById('nfItemsBody');
@@ -1653,8 +1661,12 @@ function initBindings() {
               fetch(API + '/fiscal/contatos/' + t.id)
                 .then(function (r) { return r.json(); })
                 .then(function (contato) {
-                  var formIe = document.getElementById('nf_ie_transportador');
+                  var formIe = document.getElementById('nf_transp_ie');
                   if (formIe && contato.inscricao_estadual) formIe.value = contato.inscricao_estadual;
+
+                  var formEnd = document.getElementById('nf_transp_endereco');
+                  var formMun = document.getElementById('nf_transp_municipio');
+                  var formUf = document.getElementById('nf_transp_uf');
 
                   if (contato.enderecos && contato.enderecos.length > 0) {
                     var end = contato.enderecos[0];
@@ -1662,13 +1674,12 @@ function initBindings() {
                     if (str && end.numero) str += ', ' + end.numero;
                     if (str && end.bairro) str += ' - ' + end.bairro;
                     if (str && end.cep) str += ' - CEP: ' + end.cep;
-                    var formEnd = document.getElementById('nf_endereco_transportador');
-                    var formMun = document.getElementById('nf_municipio_transportador');
-                    var formUf = document.getElementById('nf_uf_transportador');
 
                     if (formEnd && str) formEnd.value = str;
                     if (formMun && (end.cidade || end.municipio)) formMun.value = end.cidade || end.municipio;
                     if (formUf && (end.uf || end.estado)) formUf.value = end.uf || end.estado;
+                  } else {
+                    if (formEnd) formEnd.value = 'Sem endereço cadastrado';
                   }
                 })
                 .catch(function (e) { console.error('Erro ao buscar detalhes da transportadora', e); });
