@@ -3541,6 +3541,16 @@
     function handleNfeOpcao(action, invoiceId) {
       const base = window.location.origin;
       switch (action) {
+        case 'enviar':
+          if (!confirm('Deseja enviar a NF-e agora?')) return;
+          fetch(API + '/fiscal/' + invoiceId + '/enviar', { method: 'POST' })
+            .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+            .then(function (r) {
+              if (r.ok) { showMessage('msg', 'NFe enviada para a API Sefaz.', 'success'); loadInvoices(); }
+              else { showMessage('msg', r.data.message || r.data.detail || 'Erro ao enviar.', 'error'); }
+            })
+            .catch(function (e) { showMessage('msg', 'Erro: ' + (e.message || 'ao enviar'), 'error'); });
+          break;
         case 'cancelar':
           var justificativa = prompt('Justificativa do cancelamento (obrigatório, mín. 15 caracteres):');
           if (justificativa && justificativa.trim().length >= 15) {
@@ -5074,6 +5084,9 @@
             ' <div class="actions-dropdown-wrap">' +
             '   <button type="button" class="btn-lupa btn-nfe-opcoes" data-invoice-id="' + inv.id + '" data-status="' + (inv.status || '') + '" title="Mais opções"><i data-lucide="ellipsis-vertical"></i></button>' +
             '   <div class="dropdown-nfe-opcoes" data-invoice-id="' + inv.id + '" data-status="' + (inv.status || '') + '">' +
+            ((inv.status === 'PENDENTE' || inv.status === 'ERRO')
+              ? '     <button type="button" class="dropdown-item" data-action="enviar"><span class="dropdown-item-icon"><i data-lucide="send"></i></span>Enviar NF-e</button>'
+              : '     <button type="button" class="dropdown-item" disabled title="Apenas para notas PENDENTES ou em ERRO"><span class="dropdown-item-icon"><i data-lucide="send"></i></span>Enviar NF-e</button>') +
             (inv.status === 'AUTORIZADO'
               ? '     <button type="button" class="dropdown-item" data-action="cancelar"><span class="dropdown-item-icon"><i data-lucide="globe"></i></span>Cancelar NF-e</button>'
               : '     <button type="button" class="dropdown-item" disabled title="Apenas para notas autorizadas"><span class="dropdown-item-icon"><i data-lucide="globe"></i></span>Cancelar NF-e</button>') +

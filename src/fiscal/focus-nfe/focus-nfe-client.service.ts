@@ -113,9 +113,9 @@ export class FocusNFeClientService {
   }
 
   private getAmbiente(): FocusNFeAmbiente {
-    /* MODO TESTE: homologação. Para produção: FOCUS_NFE_AMBIENTE=producao no .env */
+    /* DEFAULT PARA PRODUÇÃO conforme solicitado pelo usuário. */
     const env = this.config.get<string>('FOCUS_NFE_AMBIENTE');
-    return env === 'producao' ? 'producao' : 'homologacao';
+    return env === 'homologacao' ? 'homologacao' : 'producao';
   }
 
   private getBaseUrl(): string {

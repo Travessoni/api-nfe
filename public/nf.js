@@ -739,41 +739,6 @@ function getPayloadFromForm() {
   if (!isNaN(totalIs) && totalIs > 0) payload.total_is = totalIs;
   if (!isNaN(totalIbs) && totalIbs > 0) payload.total_ibs = totalIbs;
   if (!isNaN(totalCbs) && totalCbs > 0) payload.total_cbs = totalCbs;
-
-  // Transport and Volume Data
-  var freteModalidade = get('nf_frete_por_conta') || '0';
-  payload.modalidade_frete = freteModalidade;
-
-  var temTransporte = get('nf_transporte') !== 'nao';
-  if (temTransporte) {
-    var transpNome = get('nf_transp_nome');
-    if (transpNome) payload.nome_transportador = transpNome;
-    var transpDoc = onlyNumbers(get('nf_transp_cnpj_cpf'));
-    if (transpDoc.length === 11) payload.cpf_transportador = transpDoc;
-    else if (transpDoc.length === 14) payload.cnpj_transportador = transpDoc;
-    var transpIe = get('nf_transp_ie');
-    if (transpIe) payload.inscricao_estadual_transportador = transpIe;
-    var transpEndereco = get('nf_transp_endereco');
-    if (transpEndereco) payload.endereco_transportador = transpEndereco;
-    var transpMun = get('nf_transp_municipio');
-    if (transpMun) payload.municipio_transportador = transpMun;
-    var transpUf = get('nf_transp_uf');
-    if (transpUf) payload.uf_transportador = transpUf;
-  }
-
-  var volQtd = get('nf_volume_quantidade');
-  if (volQtd) payload.quantidade_volumes = volQtd; // as string
-  var volPesoBruto = parseFloat(get('nf_volume_peso_bruto').replace(',', '.'));
-  if (!isNaN(volPesoBruto)) payload.peso_bruto_volumes = volPesoBruto;
-  var volPesoLiquido = parseFloat(get('nf_volume_peso_liquido').replace(',', '.'));
-  if (!isNaN(volPesoLiquido)) payload.peso_liquido_volumes = volPesoLiquido;
-  var volNum = get('nf_volume_numeracao');
-  if (volNum) payload.numeracao_volumes = volNum;
-  var volMarca = get('nf_volume_marca');
-  if (volMarca) payload.marca_volumes = volMarca;
-  var volEspecie = get('nf_volume_especie');
-  if (volEspecie) payload.especie_volumes = volEspecie;
-
   var tbody = document.getElementById('nfItemsBody');
   tbody.querySelectorAll('tr').forEach(function (tr, idx) {
     var inputs = tr.querySelectorAll('input[data-field]');
@@ -1079,32 +1044,6 @@ function fillFormFromPayload(p) {
   setNum('nf_total_tributos', p.valor_aproximado_tributos);
   var infoContrib = (p.informacoes_adicionais_contribuinte != null ? String(p.informacoes_adicionais_contribuinte) : '').trim();
   set('nf_info_complementares', infoContrib);
-
-  // Transport and Volume Data
-  if (p.modalidade_frete != null) setSel('nf_frete_por_conta', p.modalidade_frete);
-
-  var hasTransport = !!(p.nome_transportador || p.cnpj_transportador || p.cpf_transportador || p.inscricao_estadual_transportador);
-  if (hasTransport) {
-    setSel('nf_transporte', 'manual');
-    if (typeof setTransporteMode === 'function') setTransporteMode();
-    set('nf_transp_nome', p.nome_transportador);
-    set('nf_transp_cnpj_cpf', p.cnpj_transportador || p.cpf_transportador);
-    set('nf_transp_ie', p.inscricao_estadual_transportador);
-    set('nf_transp_endereco', p.endereco_transportador);
-    set('nf_transp_municipio', p.municipio_transportador);
-    setSel('nf_transp_uf', p.uf_transportador);
-  } else {
-    setSel('nf_transporte', 'nao');
-    if (typeof setTransporteMode === 'function') setTransporteMode();
-  }
-
-  set('nf_volume_quantidade', p.quantidade_volumes);
-  setNum('nf_volume_peso_bruto', p.peso_bruto_volumes);
-  setNum('nf_volume_peso_liquido', p.peso_liquido_volumes);
-  set('nf_volume_numeracao', p.numeracao_volumes);
-  set('nf_volume_marca', p.marca_volumes);
-  setSel('nf_volume_especie', p.especie_volumes);
-
   var tbody = document.getElementById('nfItemsBody');
   if (tbody) tbody.innerHTML = '';
   (p.items || p.itens || []).forEach(function (item, idx) { addItemRow(item, idx + 1); });
@@ -1450,9 +1389,9 @@ async function emitFromForm() {
   }
   var btn = document.getElementById('btnEmitirNF');
   setFormMessage('');
-  if (btn) { btn.disabled = true; btn.textContent = 'Emitindo…'; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Salvando…'; }
   try {
-    var res = await fetch(API + '/fiscal/emitir-payload', {
+    var res = await fetch(API + '/fiscal/salvar-pendente', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -1464,7 +1403,7 @@ async function emitFromForm() {
     });
     var data = await res.json();
     if (!res.ok) {
-      setFormMessage(data.message || data.detail || 'Erro ao emitir.', 'error');
+      setFormMessage(data.message || data.detail || 'Erro ao salvar NF-e.', 'error');
       return;
     }
     setFormMessage(
@@ -1650,42 +1589,10 @@ function initBindings() {
           li.textContent = label;
           li.dataset.nome = t.nome || t.nome_fantasia || t.razao_social || '';
           li.dataset.doc = t.cpf_cnpj || '';
-          li.dataset.id = t.id || '';
           li.addEventListener('click', function () {
             nomeEl.value = li.dataset.nome || '';
             if (docEl && li.dataset.doc) docEl.value = li.dataset.doc;
             hideList();
-
-            // Buscar dados completos da transportadora (IE e Endereço)
-            var tid = li.dataset.id;
-            if (tid) {
-              fetch(API + '/fiscal/contatos/' + tid)
-                .then(function (r) { return r.json(); })
-                .then(function (c) {
-                  if (c && typeof c === 'object') {
-                    var ieEl = document.getElementById('nf_transp_ie');
-                    if (ieEl && c.ie) ieEl.value = c.ie;
-
-                    var endArr = Array.isArray(c.enderecos) ? c.enderecos : [];
-                    var primaryEnd = endArr[0] || c; // Fallback to c root fields if no array
-
-                    var enderecoVal = '';
-                    if (primaryEnd.rua || primaryEnd.logradouro) enderecoVal += (primaryEnd.rua || primaryEnd.logradouro);
-                    if (primaryEnd.numero) enderecoVal += ', ' + primaryEnd.numero;
-                    if (primaryEnd.bairro) enderecoVal += ', ' + primaryEnd.bairro;
-
-                    var endEl = document.getElementById('nf_transp_endereco');
-                    if (endEl && enderecoVal) endEl.value = enderecoVal;
-
-                    var munEl = document.getElementById('nf_transp_municipio');
-                    if (munEl && (primaryEnd.cidade || primaryEnd.municipio)) munEl.value = primaryEnd.cidade || primaryEnd.municipio;
-
-                    var ufEl = document.getElementById('nf_transp_uf');
-                    if (ufEl && (primaryEnd.estado || primaryEnd.uf)) ufEl.value = primaryEnd.estado || primaryEnd.uf;
-                  }
-                })
-                .catch(function () { });
-            }
           });
           listEl.appendChild(li);
         });

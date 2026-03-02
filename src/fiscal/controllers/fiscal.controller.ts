@@ -124,6 +124,55 @@ export class FiscalController {
     return this.emissaoService.emitirComPayload(pedidoId, empresaId, naturezaId, payload);
   }
 
+  @Post('salvar-pendente')
+  async salvarPendente(
+    @Body()
+    body: {
+      pedido_id: number;
+      empresa_id: number;
+      natureza_operacao_id: number;
+      payload: Record<string, unknown>;
+    },
+  ): Promise<{ invoiceId: string; status: string; focus_id: string | null; mensagem: string }> {
+    const pedidoId = Number(body?.pedido_id);
+    const empresaId = Number(body?.empresa_id);
+    const naturezaId = Number(body?.natureza_operacao_id);
+    const payload = body?.payload;
+    if (!pedidoId || pedidoId < 1) throw new BadRequestException('Informe pedido_id válido.');
+    if (!empresaId || empresaId < 1) throw new BadRequestException('Informe empresa.');
+    if (!naturezaId || naturezaId < 1) throw new BadRequestException('Informe natureza de operação.');
+    if (
+      !payload ||
+      typeof payload !== 'object' ||
+      (!Array.isArray(payload.items) && !Array.isArray(payload.itens))
+    ) {
+      throw new BadRequestException('Payload inválido: informe o objeto da nota (com items).');
+    }
+    const indIE = payload.indicador_inscricao_estadual_destinatario;
+    const ieDest = (payload.inscricao_estadual_destinatario ?? '') as string;
+    if (indIE === 1 && (!ieDest || String(ieDest).trim() === '' || String(ieDest).toUpperCase() === 'ISENTO')) {
+      throw new BadRequestException(
+        'Inconsistência fiscal: destinatário é contribuinte ICMS (indIEDest=1) mas a Inscrição Estadual está vazia. Corrija o cadastro do cliente ou informe a IE.',
+      );
+    }
+
+    const errosSefaz = validarPayloadSefaz(payload);
+    if (errosSefaz.length > 0) {
+      throw new BadRequestException(
+        'Por favor, corrija os seguintes problemas antes de salvar a nota:\n\n- ' + errosSefaz.join('\n- ')
+      );
+    }
+
+    return this.emissaoService.salvarComPayload(pedidoId, empresaId, naturezaId, payload);
+  }
+
+  @Post(':invoiceId/enviar')
+  async enviarPendente(
+    @Param('invoiceId', ParseUUIDPipe) invoiceId: string,
+  ): Promise<{ invoiceId: string; status: string; focus_id: string | null; mensagem: string }> {
+    return this.emissaoService.enviarPendente(invoiceId);
+  }
+
   @Post('emitir/:pedidoId')
   async emitir(
     @Param('pedidoId', ParseIntPipe) pedidoId: number,

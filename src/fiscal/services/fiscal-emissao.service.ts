@@ -13,7 +13,7 @@ export class FiscalEmissaoService {
     private readonly supabase: FiscalSupabaseService,
     private readonly pedidoData: PedidoDataService,
     @InjectQueue(FISCAL_QUEUE_NAME) private readonly queue: Queue,
-  ) {}
+  ) { }
 
   /**
    * Emite NFe para o pedido. Cada emissão é independente: permite múltiplas NFe para a mesma venda.
@@ -62,28 +62,11 @@ export class FiscalEmissaoService {
       status: 'PENDENTE',
     });
 
-    await this.queue.add(
-      'emitir',
-      {
-        invoiceId: invoice.id,
-        pedidoId,
-        referencia,
-        empresa_id: empresaIdNum,
-        natureza_operacao_id: naturezaOperacaoIdNum,
-      } as EmissaoJobPayload,
-      {
-        jobId: invoice.id,
-        attempts: 3,
-        backoff: { type: 'exponential', delay: 5000 },
-        removeOnComplete: { count: 1000 },
-      },
-    );
-
     return {
       invoiceId: invoice.id,
-      status: 'PROCESSANDO',
+      status: 'PENDENTE',
       focus_id: referencia,
-      mensagem: 'NFe enviada para processamento. Aguarde o webhook ou consulte o status.',
+      mensagem: 'NF-e gerada e salva como PENDENTE MODO MANUAL.',
     };
   }
 
@@ -109,8 +92,8 @@ export class FiscalEmissaoService {
       typeof valorNotaRaw === 'number'
         ? valorNotaRaw
         : valorNotaRaw != null && !Number.isNaN(Number(valorNotaRaw))
-        ? Number(valorNotaRaw)
-        : null;
+          ? Number(valorNotaRaw)
+          : null;
 
     const invoice = await this.supabase.createInvoice({
       pedido_id: pedidoId,
@@ -147,6 +130,94 @@ export class FiscalEmissaoService {
       status: 'PROCESSANDO',
       focus_id: referencia,
       mensagem: 'NFe enviada para processamento. Aguarde o webhook ou consulte o status.',
+    };
+  }
+
+  /**
+   * Salva a NF-e como PENDENTE sem enviar para a API Sefaz.
+   */
+  async salvarComPayload(
+    pedidoId: number,
+    empresaId: number,
+    naturezaId: number,
+    payload: Record<string, unknown>,
+  ): Promise<{
+    invoiceId: string;
+    status: string;
+    focus_id: string | null;
+    mensagem: string;
+  }> {
+    const numeroNf = await this.supabase.getNextNumeroNf(empresaId, SERIE_DEFAULT);
+    const referencia = `PEDIDO-${pedidoId}-${Date.now()}`;
+    const valorNotaRaw = (payload as Record<string, unknown>).valor_total;
+    const valorNota =
+      typeof valorNotaRaw === 'number'
+        ? valorNotaRaw
+        : valorNotaRaw != null && !Number.isNaN(Number(valorNotaRaw))
+          ? Number(valorNotaRaw)
+          : null;
+
+    const invoice = await this.supabase.createInvoice({
+      pedido_id: pedidoId,
+      empresa_id: empresaId,
+      natureza_operacao_id: naturezaId,
+      numero_nf: numeroNf,
+      serie: SERIE_DEFAULT,
+      focus_id: referencia,
+      status: 'PENDENTE',
+      valor_nota: valorNota,
+      payload_json: payload,
+    });
+
+    return {
+      invoiceId: invoice.id,
+      status: 'PENDENTE',
+      focus_id: referencia,
+      mensagem: 'NF-e salva como Pendente MODO MANUAL.',
+    };
+  }
+
+  /**
+   * Envia uma NFe que estava no status PENDENTE para a API.
+   */
+  async enviarPendente(invoiceId: string): Promise<{
+    invoiceId: string;
+    status: string;
+    focus_id: string | null;
+    mensagem: string;
+  }> {
+    const invoice = await this.supabase.findInvoiceById(invoiceId);
+    if (!invoice) throw new NotFoundException('Nota fiscal não encontrada');
+
+    if (invoice.status !== 'PENDENTE' && invoice.status !== 'ERRO') {
+      throw new BadRequestException('Apenas notas PENDENTE ou ERRO podem ser enviadas manualmente.');
+    }
+
+    await this.supabase.updateInvoiceStatus(invoiceId, { status: 'PROCESSANDO' });
+
+    await this.queue.add(
+      'emitir',
+      {
+        invoiceId: invoice.id,
+        pedidoId: invoice.pedido_id,
+        referencia: invoice.focus_id,
+        empresa_id: invoice.empresa_id,
+        natureza_operacao_id: invoice.natureza_operacao_id,
+        payload: invoice.payload_json,
+      } as EmissaoJobPayload,
+      {
+        jobId: String(invoice.id) + Date.now().toString(), // garante novo job na fila caso já exista 
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 5000 },
+        removeOnComplete: { count: 1000 },
+      },
+    );
+
+    return {
+      invoiceId: invoice.id,
+      status: 'PROCESSANDO',
+      focus_id: invoice.focus_id,
+      mensagem: 'NF-e PENDENTE enviada para processamento. Aguarde o webhook ou consulte o status.',
     };
   }
 }
