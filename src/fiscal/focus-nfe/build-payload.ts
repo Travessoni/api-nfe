@@ -787,12 +787,16 @@ export function buildFocusNFePayload(
       ...(pedido.transporte_uf != null && { uf_transportador: String(pedido.transporte_uf) }),
     }),
 
-    ...(pedido.volume_quantidade != null && { quantidade_volumes: Number(pedido.volume_quantidade) }),
-    ...(pedido.volume_especie != null && { especie_volumes: String(pedido.volume_especie) }),
-    ...(pedido.volume_marca != null && { marca_volumes: String(pedido.volume_marca) }),
-    ...(pedido.volume_numeracao != null && { numeracao_volumes: String(pedido.volume_numeracao) }),
-    ...(pedido.volume_peso_bruto != null && { peso_bruto_volumes: Number(pedido.volume_peso_bruto) }),
-    ...(pedido.volume_peso_liquido != null && { peso_liquido_volumes: Number(pedido.volume_peso_liquido) }),
+    ...((pedido.volume_quantidade != null || pedido.volume_especie != null || pedido.volume_marca != null || pedido.volume_numeracao != null || pedido.volume_peso_bruto != null || pedido.volume_peso_liquido != null) && {
+      volumes: [{
+        ...(pedido.volume_quantidade != null && { quantidade: Number(pedido.volume_quantidade) }),
+        ...(pedido.volume_especie != null && { especie: String(pedido.volume_especie) }),
+        ...(pedido.volume_marca != null && { marca: String(pedido.volume_marca) }),
+        ...(pedido.volume_numeracao != null && { numeracao: String(pedido.volume_numeracao) }),
+        ...(pedido.volume_peso_bruto != null && { peso_bruto: Number(pedido.volume_peso_bruto) }),
+        ...(pedido.volume_peso_liquido != null && { peso_liquido: Number(pedido.volume_peso_liquido) })
+      }]
+    }),
 
     items: itensPayload,
   };

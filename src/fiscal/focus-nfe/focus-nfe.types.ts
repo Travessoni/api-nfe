@@ -145,12 +145,16 @@ export interface FocusNFePayload {
   municipio_transportador?: string;
   uf_transportador?: string;
 
-  quantidade_volumes?: number;
-  especie_volumes?: string;
-  marca_volumes?: string;
-  numeracao_volumes?: string;
-  peso_bruto_volumes?: number;
-  peso_liquido_volumes?: number;
+  volumes?: FocusNFeVolumePayload[];
 
   items: FocusNFeItemPayload[];
+}
+
+export interface FocusNFeVolumePayload {
+  quantidade?: number;
+  especie?: string;
+  marca?: string;
+  numeracao?: string;
+  peso_bruto?: number;
+  peso_liquido?: number;
 }
