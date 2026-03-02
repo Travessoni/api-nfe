@@ -775,6 +775,25 @@ export function buildFocusNFePayload(
     ...(nat.ibs_valor_total != null && { ibs_valor_total: Number(nat.ibs_valor_total) }),
     ...(nat.cbs_aliquota != null && { cbs_aliquota: Number(nat.cbs_aliquota) }),
     ...(nat.cbs_valor != null && { cbs_valor: Number(nat.cbs_valor) }),
+
+    ...(pedido.transporte_modalidade != null && { modalidade_frete: String(pedido.transporte_modalidade) }),
+    ...(String(pedido.transporte_modalidade ?? '') !== '9' && {
+      ...(pedido.transporte_nome != null && { nome_transportador: String(pedido.transporte_nome) }),
+      ...(pedido.transporte_cnpj != null && String(pedido.transporte_cnpj).length === 14 && { cnpj_transportador: String(pedido.transporte_cnpj) }),
+      ...(pedido.transporte_cnpj != null && String(pedido.transporte_cnpj).length === 11 && { cpf_transportador: String(pedido.transporte_cnpj) }),
+      ...(pedido.transporte_ie != null && { inscricao_estadual_transportador: String(pedido.transporte_ie) }),
+      ...(pedido.transporte_endereco != null && { endereco_transportador: String(pedido.transporte_endereco) }),
+      ...(pedido.transporte_municipio != null && { municipio_transportador: String(pedido.transporte_municipio) }),
+      ...(pedido.transporte_uf != null && { uf_transportador: String(pedido.transporte_uf) }),
+    }),
+
+    ...(pedido.volume_quantidade != null && { quantidade_volumes: Number(pedido.volume_quantidade) }),
+    ...(pedido.volume_especie != null && { especie_volumes: String(pedido.volume_especie) }),
+    ...(pedido.volume_marca != null && { marca_volumes: String(pedido.volume_marca) }),
+    ...(pedido.volume_numeracao != null && { numeracao_volumes: String(pedido.volume_numeracao) }),
+    ...(pedido.volume_peso_bruto != null && { peso_bruto_volumes: Number(pedido.volume_peso_bruto) }),
+    ...(pedido.volume_peso_liquido != null && { peso_liquido_volumes: Number(pedido.volume_peso_liquido) }),
+
     items: itensPayload,
   };
 

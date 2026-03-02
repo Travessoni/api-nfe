@@ -135,5 +135,22 @@ export interface FocusNFePayload {
   ibs_valor_total?: number;
   cbs_aliquota?: number;
   cbs_valor?: number;
+
+  // Transport and Volume Data
+  nome_transportador?: string;
+  cnpj_transportador?: string;
+  cpf_transportador?: string;
+  inscricao_estadual_transportador?: string;
+  endereco_transportador?: string;
+  municipio_transportador?: string;
+  uf_transportador?: string;
+
+  quantidade_volumes?: number;
+  especie_volumes?: string;
+  marca_volumes?: string;
+  numeracao_volumes?: string;
+  peso_bruto_volumes?: number;
+  peso_liquido_volumes?: number;
+
   items: FocusNFeItemPayload[];
 }
