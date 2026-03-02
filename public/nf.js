@@ -1095,7 +1095,7 @@ function fillFormFromPayload(p) {
     var transpSelect = document.getElementById('nf_transporte');
     if (transpSelect) {
       transpSelect.value = 'manual';
-      if (typeof setTransporteMode === 'function') setTransporteMode('manual');
+      if (typeof window.setTransporteMode === 'function') window.setTransporteMode('manual');
     }
   }
 
@@ -1620,7 +1620,7 @@ function initBindings() {
     var listEl = document.getElementById('nfTranspAcList');
     if (!selectTransporte || !dadosWrap) return;
 
-    function setTransporteMode(mode) {
+    window.setTransporteMode = function (mode) {
       var disable = mode === 'nao';
       dadosWrap.querySelectorAll('input, select, textarea').forEach(function (el) {
         el.disabled = disable;
@@ -1632,9 +1632,9 @@ function initBindings() {
     }
 
     selectTransporte.addEventListener('change', function () {
-      setTransporteMode(this.value || 'nao');
+      window.setTransporteMode(this.value || 'nao');
     });
-    setTransporteMode(selectTransporte.value || 'nao');
+    window.setTransporteMode(selectTransporte.value || 'nao');
 
     // Campo Nome com autocomplete de transportadora (tipo_cadastro = 'transportadora') quando modo = "manual"
     if (nomeEl && listEl) {
@@ -1662,7 +1662,7 @@ function initBindings() {
                 .then(function (r) { return r.json(); })
                 .then(function (contato) {
                   var formIe = document.getElementById('nf_transp_ie');
-                  if (formIe && contato.inscricao_estadual) formIe.value = contato.inscricao_estadual;
+                  if (formIe && (contato.ie || contato.inscricao_estadual)) formIe.value = contato.ie || contato.inscricao_estadual;
 
                   var formEnd = document.getElementById('nf_transp_endereco');
                   var formMun = document.getElementById('nf_transp_municipio');
