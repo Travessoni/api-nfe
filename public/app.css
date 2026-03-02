@@ -1660,6 +1660,10 @@ textarea:focus {
   padding: 0px;
   border-bottom: 1px solid #27272A;
   flex-wrap: nowrap;
+  margin-top: 16px;
+  margin-bottom: 22px;
+  margin-left: 0px;
+  margin-right: 0px;
 }
 
 .sheet-tabs::-webkit-scrollbar {

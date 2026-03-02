@@ -109,7 +109,6 @@ export interface FocusNFePayload {
   valor_total: number;
   valor_produtos: number;
   valor_desconto?: number;
-  modalidade_frete?: string;
   /** 1 = mesma UF, 2 = UF diferente, 3 = exterior. Obrigatório. */
   local_destino: 1 | 2 | 3;
   /** 1 = contribuinte ICMS, 2 = isento, 9 = não contribuinte (CPF). Obrigatório. */
@@ -135,5 +134,20 @@ export interface FocusNFePayload {
   ibs_valor_total?: number;
   cbs_aliquota?: number;
   cbs_valor?: number;
+  // Transportes e Volumes
+  modalidade_frete?: string;
+  cnpj_transportador?: string;
+  cpf_transportador?: string;
+  nome_transportador?: string;
+  inscricao_estadual_transportador?: string;
+  endereco_transportador?: string;
+  municipio_transportador?: string;
+  uf_transportador?: string;
+  quantidade_volumes?: string; // number sent as string or number
+  peso_bruto_volumes?: number;
+  peso_liquido_volumes?: number;
+  numeracao_volumes?: string;
+  marca_volumes?: string;
+  especie_volumes?: string;
   items: FocusNFeItemPayload[];
 }
