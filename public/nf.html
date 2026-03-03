@@ -172,7 +172,12 @@
               </div>
               <div class="form-group">
                 <label for="nf_finalidade_emissao">Finalidade</label>
-                <input type="text" id="nf_finalidade_emissao" name="finalidade_emissao" placeholder="1">
+                <select id="nf_finalidade_emissao" name="finalidade_emissao">
+                  <option value="1" selected>1 – Normal</option>
+                  <option value="2">2 – Complementar</option>
+                  <option value="3">3 – Nota de ajuste</option>
+                  <option value="4">4 – Devolução</option>
+                </select>
               </div>
               <div class="form-group">
                 <label for="nf_presenca_comprador">Indicador de presença</label>
@@ -190,397 +195,391 @@
               <input type="hidden" id="nf_local_destino" name="local_destino" value="1">
             </div>
           </div>
-          <div class="form-group">
-            <label for="nf_indicador_ie_dest">Indicador IE destinatário</label>
-            <select id="nf_indicador_ie_dest" name="indicador_inscricao_estadual_destinatario">
-              <option value="1">1 - Contribuinte ICMS</option>
-              <option value="9" selected>9 - Não contribuinte</option>
-            </select>
+        </div>
+
+        <!-- Emitente: dados preenchidos por "Carregar dados", não exibidos -->
+        <div class="form-section" style="display: none;" aria-hidden="true">
+          <input type="hidden" id="nf_cnpj_emitente" name="cnpj_emitente">
+          <input type="hidden" id="nf_nome_emitente" name="nome_emitente">
+          <input type="hidden" id="nf_nome_fantasia_emitente" name="nome_fantasia_emitente">
+          <input type="hidden" id="nf_inscricao_estadual_emitente" name="inscricao_estadual_emitente">
+          <input type="hidden" id="nf_cep_emitente" name="cep_emitente">
+          <input type="hidden" id="nf_uf_emitente" name="uf_emitente">
+          <input type="hidden" id="nf_municipio_emitente" name="municipio_emitente">
+          <input type="hidden" id="nf_bairro_emitente" name="bairro_emitente">
+          <input type="hidden" id="nf_logradouro_emitente" name="logradouro_emitente">
+          <input type="hidden" id="nf_numero_emitente" name="numero_emitente">
+          <input type="hidden" id="nf_telefone_emitente" name="telefone_emitente">
+        </div>
+
+        <div class="form-section">
+          <h4 class="form-section-title">Destinatário</h4>
+
+          <h5 class="form-section-subtitle" style="margin-bottom: 12px;">Dados do Destinatário</h5>
+          <div class="form-grid-3">
+            <div class="form-group">
+              <label for="nf_cliente_busca">Cliente</label>
+              <div class="cliente-search-wrap">
+                <input type="text" id="nf_cliente_busca" autocomplete="off" placeholder="Cliente do pedido" readonly>
+                <button type="button" class="cliente-btn-add-edit" id="nf_cliente_btn_add_edit"
+                  aria-label="Adicionar cliente"><i data-lucide="plus"></i></button>
+                <ul class="cliente-contatos-list" id="nf_cliente_contatos_list"></ul>
+              </div>
+              <input type="hidden" id="nf_nome_destinatario" name="nome_destinatario">
+            </div>
+
+            <div class="form-group">
+              <label for="nf_tipo_pessoa_dest">Tipo de Pessoa</label>
+              <select id="nf_tipo_pessoa_dest" name="tipo_pessoa_dest" required>
+                <option value="">Selecionar</option>
+                <option value="pf">Pessoa Física</option>
+                <option value="pj">Pessoa Jurídica</option>
+              </select>
+            </div>
+
+            <div class="form-group" id="nf_doc_dest_wrap">
+              <label for="nf_cpf_cnpj_dest" id="nf_doc_dest_label">CPF ou CNPJ</label>
+              <input type="text" id="nf_cpf_cnpj_dest" placeholder="Selecione o tipo de pessoa" maxlength="18">
+              <span class="error-msg" id="nf_doc_dest_error" style="display: none;"></span>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-top: 8px;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <input type="checkbox" id="nf_consumidor_final" name="consumidor_final" value="1" checked
+                style="width: 16px; height: 16px; margin: 0;">
+              <span style="font-weight: 500; font-size: 0.75rem;">Consumidor<br>final</span>
+            </label>
+          </div>
+
+          <div class="form-grid-3" style="margin-top: 16px;">
+            <div class="form-group">
+              <label for="nf_indicador_ie_dest">Tipo do Contribuinte</label>
+              <select id="nf_indicador_ie_dest" name="indicador_ie_dest">
+                <option value="1">1 - Contribuinte ICMS</option>
+                <option value="2">2 - Contribuinte isento</option>
+                <option value="9" selected>9 - Não contribuinte</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="nf_inscricao_estadual_destinatario">Inscrição Estadual</label>
+              <input type="text" id="nf_inscricao_estadual_destinatario" name="inscricao_estadual_destinatario"
+                placeholder="ISENTO ou número">
+            </div>
+
+            <div class="form-group">
+              <label for="nf_nome_fantasia_destinatario">Nome Fantasia</label>
+              <input type="text" id="nf_nome_fantasia_destinatario" name="nome_fantasia_destinatario"
+                placeholder="Nome Fantasia">
+            </div>
+          </div>
+
+          <div class="form-group nf-destinatario-endereco-wrap" style="margin-top: 24px;">
+            <h5 class="form-section-subtitle" style="margin-bottom: 12px;">Endereço do Destinatário</h5>
+            <div id="nfDestinatarioEnderecosContainer">
+              <div class="nf-endereco-cards" id="nfDestinatarioEnderecosCards" style="display: none;"></div>
+              <button type="button" class="nf-endereco-add-btn secondary btn-icon-lucide"
+                id="nfDestinatarioEnderecoAddBtn" style="display: none;"><i data-lucide="plus"></i> Adicionar
+                Endereço</button>
+            </div>
+          </div>
+
+          <div class="form-grid-4" style="margin-top: 16px;">
+            <div class="form-group">
+              <label for="nf_cep_destinatario">CEP</label>
+              <input type="text" id="nf_cep_destinatario" name="cep_destinatario" placeholder="Apenas números">
+            </div>
+            <div class="form-group">
+              <label for="nf_uf_destinatario">UF</label>
+              <input type="text" id="nf_uf_destinatario" name="uf_destinatario" placeholder="UF" maxlength="2">
+            </div>
+            <div class="form-group">
+              <label for="nf_municipio_destinatario">Município</label>
+              <input type="text" id="nf_municipio_destinatario" name="municipio_destinatario" placeholder="Cidade">
+            </div>
+            <div class="form-group">
+              <label for="nf_bairro_destinatario">Bairro</label>
+              <input type="text" id="nf_bairro_destinatario" name="bairro_destinatario" placeholder="Bairro">
+            </div>
+          </div>
+
+          <div class="form-grid-3" style="margin-top: 16px;">
+            <div class="form-group">
+              <label for="nf_logradouro_destinatario">Endereço</label>
+              <input type="text" id="nf_logradouro_destinatario" name="logradouro_destinatario" placeholder="Rua, Av.">
+            </div>
+            <div class="form-group">
+              <label for="nf_numero_destinatario">Número</label>
+              <input type="text" id="nf_numero_destinatario" name="numero_destinatario" placeholder="Nº">
+            </div>
+            <div class="form-group">
+              <label for="nf_complemento_destinatario">Complemento</label>
+              <input type="text" id="nf_complemento_destinatario" name="complemento_destinatario"
+                placeholder="Apto, Sala, Bloco">
+            </div>
+          </div>
+
+          <div class="form-grid-2" style="margin-top: 16px;">
+            <div class="form-group">
+              <label for="nf_telefone_destinatario">Fone/FAX</label>
+              <input type="text" id="nf_telefone_destinatario" name="telefone_destinatario" placeholder="Opcional">
+            </div>
+            <div class="form-group">
+              <label for="nf_email_destinatario">E-mail</label>
+              <input type="email" id="nf_email_destinatario" name="email_destinatario" placeholder="email@exemplo.com">
+            </div>
           </div>
         </div>
-    </div>
-
-    <!-- Emitente: dados preenchidos por "Carregar dados", não exibidos -->
-    <div class="form-section" style="display: none;" aria-hidden="true">
-      <input type="hidden" id="nf_cnpj_emitente" name="cnpj_emitente">
-      <input type="hidden" id="nf_nome_emitente" name="nome_emitente">
-      <input type="hidden" id="nf_nome_fantasia_emitente" name="nome_fantasia_emitente">
-      <input type="hidden" id="nf_inscricao_estadual_emitente" name="inscricao_estadual_emitente">
-      <input type="hidden" id="nf_cep_emitente" name="cep_emitente">
-      <input type="hidden" id="nf_uf_emitente" name="uf_emitente">
-      <input type="hidden" id="nf_municipio_emitente" name="municipio_emitente">
-      <input type="hidden" id="nf_bairro_emitente" name="bairro_emitente">
-      <input type="hidden" id="nf_logradouro_emitente" name="logradouro_emitente">
-      <input type="hidden" id="nf_numero_emitente" name="numero_emitente">
-      <input type="hidden" id="nf_telefone_emitente" name="telefone_emitente">
-    </div>
-
-    <div class="form-section">
-      <h4 class="form-section-title">Destinatário</h4>
-
-      <h5 class="form-section-subtitle" style="margin-bottom: 12px;">Dados do Destinatário</h5>
-      <div class="form-grid-3">
-        <div class="form-group">
-          <label for="nf_cliente_busca">Cliente</label>
-          <div class="cliente-search-wrap">
-            <input type="text" id="nf_cliente_busca" autocomplete="off" placeholder="Cliente do pedido" readonly>
-            <button type="button" class="cliente-btn-add-edit" id="nf_cliente_btn_add_edit"
-              aria-label="Adicionar cliente"><i data-lucide="plus"></i></button>
-            <ul class="cliente-contatos-list" id="nf_cliente_contatos_list"></ul>
-          </div>
-          <input type="hidden" id="nf_nome_destinatario" name="nome_destinatario">
+        <div class="form-section">
+          <h4 class="form-section-title">Produtos</h4>
+          <table class="nf-items-table">
+            <thead>
+              <tr>
+                <th class="col-num col-item-num"></th>
+                <th class="col-desc">Descrição</th>
+                <th class="col-num">SKU</th>
+                <th class="col-ncm">NCM</th>
+                <th>UN</th>
+                <th class="col-num">Qtd</th>
+                <th class="col-num">Valor un.</th>
+                <th class="col-num">Valor total</th>
+                <th class="col-del"></th>
+              </tr>
+            </thead>
+            <tbody id="nfItemsBody"></tbody>
+          </table>
+          <button type="button" class="small" id="btnAdicionarItemNF" style="margin-top: 10px;">+ Adicionar
+            produto</button>
         </div>
-
-        <div class="form-group">
-          <label for="nf_tipo_pessoa_dest">Tipo de Pessoa</label>
-          <select id="nf_tipo_pessoa_dest" name="tipo_pessoa_dest" required>
-            <option value="">Selecionar</option>
-            <option value="pf">Pessoa Física</option>
-            <option value="pj">Pessoa Jurídica</option>
-          </select>
-        </div>
-
-        <div class="form-group" id="nf_doc_dest_wrap">
-          <label for="nf_cpf_cnpj_dest" id="nf_doc_dest_label">CPF ou CNPJ</label>
-          <input type="text" id="nf_cpf_cnpj_dest" placeholder="Selecione o tipo de pessoa" maxlength="18">
-          <span class="error-msg" id="nf_doc_dest_error" style="display: none;"></span>
-        </div>
-      </div>
-
-      <div class="form-group" style="margin-top: 8px;">
-        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-          <input type="checkbox" id="nf_consumidor_final" name="consumidor_final" value="1" checked>
-          <strong>Consumidor final</strong>
-        </label>
-      </div>
-
-      <div class="form-grid-3" style="margin-top: 16px;">
-        <div class="form-group">
-          <label for="nf_indicador_ie_dest">Tipo do Contribuinte</label>
-          <select id="nf_indicador_ie_dest" name="indicador_ie_dest">
-            <option value="1">1 - Contribuinte ICMS</option>
-            <option value="2">2 - Contribuinte isento</option>
-            <option value="9" selected>9 - Não contribuinte</option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label for="nf_inscricao_estadual_destinatario">Inscrição Estadual</label>
-          <input type="text" id="nf_inscricao_estadual_destinatario" name="inscricao_estadual_destinatario"
-            placeholder="ISENTO ou número">
-        </div>
-
-        <div class="form-group">
-          <label for="nf_nome_fantasia_destinatario">Nome Fantasia</label>
-          <input type="text" id="nf_nome_fantasia_destinatario" name="nome_fantasia_destinatario"
-            placeholder="Nome Fantasia">
-        </div>
-      </div>
-
-      <div class="form-group nf-destinatario-endereco-wrap" style="margin-top: 24px;">
-        <h5 class="form-section-subtitle" style="margin-bottom: 12px;">Endereço do Destinatário</h5>
-        <div id="nfDestinatarioEnderecosContainer">
-          <div class="nf-endereco-cards" id="nfDestinatarioEnderecosCards" style="display: none;"></div>
-          <button type="button" class="nf-endereco-add-btn secondary btn-icon-lucide" id="nfDestinatarioEnderecoAddBtn"
-            style="display: none;"><i data-lucide="plus"></i> Adicionar
-            Endereço</button>
-        </div>
-      </div>
-
-      <div class="form-grid-4" style="margin-top: 16px;">
-        <div class="form-group">
-          <label for="nf_cep_destinatario">CEP</label>
-          <input type="text" id="nf_cep_destinatario" name="cep_destinatario" placeholder="Apenas números">
-        </div>
-        <div class="form-group">
-          <label for="nf_uf_destinatario">UF</label>
-          <input type="text" id="nf_uf_destinatario" name="uf_destinatario" placeholder="UF" maxlength="2">
-        </div>
-        <div class="form-group">
-          <label for="nf_municipio_destinatario">Município</label>
-          <input type="text" id="nf_municipio_destinatario" name="municipio_destinatario" placeholder="Cidade">
-        </div>
-        <div class="form-group">
-          <label for="nf_bairro_destinatario">Bairro</label>
-          <input type="text" id="nf_bairro_destinatario" name="bairro_destinatario" placeholder="Bairro">
-        </div>
-      </div>
-
-      <div class="form-grid-3" style="margin-top: 16px;">
-        <div class="form-group">
-          <label for="nf_logradouro_destinatario">Endereço</label>
-          <input type="text" id="nf_logradouro_destinatario" name="logradouro_destinatario" placeholder="Rua, Av.">
-        </div>
-        <div class="form-group">
-          <label for="nf_numero_destinatario">Número</label>
-          <input type="text" id="nf_numero_destinatario" name="numero_destinatario" placeholder="Nº">
-        </div>
-        <div class="form-group">
-          <label for="nf_complemento_destinatario">Complemento</label>
-          <input type="text" id="nf_complemento_destinatario" name="complemento_destinatario"
-            placeholder="Apto, Sala, Bloco">
-        </div>
-      </div>
-
-      <div class="form-grid-2" style="margin-top: 16px;">
-        <div class="form-group">
-          <label for="nf_telefone_destinatario">Fone/FAX</label>
-          <input type="text" id="nf_telefone_destinatario" name="telefone_destinatario" placeholder="Opcional">
-        </div>
-        <div class="form-group">
-          <label for="nf_email_destinatario">E-mail</label>
-          <input type="email" id="nf_email_destinatario" name="email_destinatario" placeholder="email@exemplo.com">
-        </div>
-      </div>
-    </div>
-    <div class="form-section">
-      <h4 class="form-section-title">Produtos</h4>
-      <table class="nf-items-table">
-        <thead>
-          <tr>
-            <th class="col-num col-item-num"></th>
-            <th class="col-desc">Descrição</th>
-            <th class="col-num">SKU</th>
-            <th class="col-ncm">NCM</th>
-            <th>UN</th>
-            <th class="col-num">Qtd</th>
-            <th class="col-num">Valor un.</th>
-            <th class="col-num">Valor total</th>
-            <th class="col-del"></th>
-          </tr>
-        </thead>
-        <tbody id="nfItemsBody"></tbody>
-      </table>
-      <button type="button" class="small" id="btnAdicionarItemNF" style="margin-top: 10px;">+ Adicionar
-        produto</button>
-    </div>
-    <div class="form-section">
-      <h4 class="form-section-title">Totais</h4>
-      <div class="form-grid-4">
-        <div class="form-group">
-          <label for="nf_valor_produtos">Valor produtos (R$)</label>
-          <input type="number" id="nf_valor_produtos" name="valor_produtos" step="0.01" min="0">
-        </div>
-        <div class="form-group">
-          <label for="nf_valor_frete">Valor frete (R$)</label>
-          <input type="number" id="nf_valor_frete" name="valor_frete" step="0.01" min="0">
-        </div>
-        <div class="form-group">
-          <label for="nf_valor_desconto">Valor desconto (R$)</label>
-          <input type="number" id="nf_valor_desconto" name="valor_desconto" step="0.01" min="0" placeholder="0">
-        </div>
-        <div class="form-group">
-          <label for="nf_valor_total">Valor total (R$)</label>
-          <input type="number" id="nf_valor_total" name="valor_total" step="0.01" min="0">
-        </div>
-      </div>
-    </div>
-    <div class="form-section" id="formSectionCalcImposto">
-      <div class="calc-imposto-header">
-        <h4 class="form-section-title" style="margin: 0;">Cálculo de imposto</h4>
-        <div class="calc-imposto-toggle-group">
-          <span>Cálculo automático ligado</span>
-          <div class="toggle-wrap">
-            <div class="toggle-switch on" id="nfCalcAutoToggle" role="switch" aria-checked="true"
-              title="Ativar/desativar cálculo automático"></div>
-            <span id="nfCalcAutoLabel" style="font-size: 0.85rem; color: #a1a1aa;">Ativado</span>
+        <div class="form-section">
+          <h4 class="form-section-title">Totais</h4>
+          <div class="form-grid-4">
+            <div class="form-group">
+              <label for="nf_valor_produtos">Valor produtos (R$)</label>
+              <input type="number" id="nf_valor_produtos" name="valor_produtos" step="0.01" min="0">
+            </div>
+            <div class="form-group">
+              <label for="nf_valor_frete">Valor frete (R$)</label>
+              <input type="number" id="nf_valor_frete" name="valor_frete" step="0.01" min="0">
+            </div>
+            <div class="form-group">
+              <label for="nf_valor_desconto">Valor desconto (R$)</label>
+              <input type="number" id="nf_valor_desconto" name="valor_desconto" step="0.01" min="0" placeholder="0">
+            </div>
+            <div class="form-group">
+              <label for="nf_valor_total">Valor total (R$)</label>
+              <input type="number" id="nf_valor_total" name="valor_total" step="0.01" min="0">
+            </div>
           </div>
         </div>
-      </div>
-      <div class="form-grid-4" id="calcImpostoInputs">
-        <div class="form-group">
-          <label for="nf_total_produtos">Total dos Produtos (R$)</label>
-          <input type="number" id="nf_total_produtos" step="0.01" min="0" placeholder="0,00">
-        </div>
-        <div class="form-group">
-          <label for="nf_valor_frete_calc">Valor do Frete (R$)</label>
-          <input type="number" id="nf_valor_frete_calc" step="0.01" min="0" placeholder="0,00">
-        </div>
-        <div class="form-group">
-          <label for="nf_valor_seguro_calc">Valor do Seguro (R$)</label>
-          <input type="number" id="nf_valor_seguro_calc" step="0.01" min="0" placeholder="0,00">
-        </div>
-        <div class="form-group">
-          <label for="nf_outras_despesas">Outras Despesas (R$)</label>
-          <input type="number" id="nf_outras_despesas" step="0.01" min="0" placeholder="0,00">
-        </div>
-        <div class="form-group">
-          <label for="nf_desconto_calc">Desconto (R$)</label>
-          <input type="number" id="nf_desconto_calc" step="0.01" min="0" placeholder="0,00">
-        </div>
-        <div class="form-group">
-          <label for="nf_total_nota">Total da Nota (R$)</label>
-          <input type="number" id="nf_total_nota" step="0.01" min="0" placeholder="0,00">
-        </div>
-        <div class="form-group">
-          <label for="nf_base_icms">Base ICMS</label>
-          <input type="number" id="nf_base_icms" step="0.01" min="0" placeholder="0,00">
-        </div>
-        <div class="form-group">
-          <label for="nf_valor_icms">Valor ICMS</label>
-          <input type="number" id="nf_valor_icms" step="0.01" min="0" placeholder="0,00">
-        </div>
-        <div class="form-group">
-          <label for="nf_base_icms_st">Base ICMS ST</label>
-          <input type="number" id="nf_base_icms_st" step="0.01" min="0" placeholder="0,00">
-        </div>
-        <div class="form-group">
-          <label for="nf_valor_icms_st">Valor ICMS ST</label>
-          <input type="number" id="nf_valor_icms_st" step="0.01" min="0" placeholder="0,00">
-        </div>
-        <div class="form-group">
-          <label for="nf_valor_ipi">Valor IPI</label>
-          <input type="number" id="nf_valor_ipi" step="0.01" min="0" placeholder="0,00">
-        </div>
-        <div class="form-group">
-          <label for="nf_total_is">Total IS (R$)</label>
-          <input type="number" id="nf_total_is" step="0.01" min="0" placeholder="0,00">
-        </div>
-        <div class="form-group">
-          <label for="nf_total_ibs">Total IBS (R$)</label>
-          <input type="number" id="nf_total_ibs" step="0.01" min="0" placeholder="0,00">
-        </div>
-        <div class="form-group">
-          <label for="nf_total_cbs">Total CBS (R$)</label>
-          <input type="number" id="nf_total_cbs" step="0.01" min="0" placeholder="0,00">
-        </div>
-        <div class="form-group">
-          <label for="nf_total_servicos">Total dos Serviços</label>
-          <input type="number" id="nf_total_servicos" step="0.01" min="0" placeholder="0,00">
-        </div>
-        <div class="form-group">
-          <label for="nf_valor_issqn">Valor ISSQN</label>
-          <input type="number" id="nf_valor_issqn" step="0.01" min="0" placeholder="0,00">
-        </div>
-        <div class="form-group">
-          <label for="nf_valor_funrural">Valor Funrural (R$)</label>
-          <input type="number" id="nf_valor_funrural" step="0.01" min="0" placeholder="0,00">
-        </div>
-        <div class="form-group">
-          <label for="nf_total_faturado">Total Faturado (R$)</label>
-          <input type="number" id="nf_total_faturado" step="0.01" min="0" placeholder="0,00">
-        </div>
-        <div class="form-group">
-          <label for="nf_total_tributos" class="label-with-info">Total A. Tributos (R$) <span class="info-icon"
-              title="Valor aproximado dos tributos">&#8505;</span></label>
-          <input type="number" id="nf_total_tributos" step="0.01" min="0" placeholder="0,00">
-        </div>
-      </div>
-    </div>
-    <div class="form-section">
-      <h4 class="form-section-title">Transportador / Volumes</h4>
-      <div class="form-grid-2">
-        <div class="form-group">
-          <label for="nf_transporte">Transporte</label>
-          <select id="nf_transporte">
-            <option value="nao">Não haverá transporte</option>
-            <option value="manual">Inserir transportadora manualmente</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="nf_frete_por_conta">Frete por conta</label>
-          <select id="nf_frete_por_conta">
-            <option value="0">0 - Contratação do Frete por conta do Remetente (CIF)</option>
-            <option value="1">1 - Contratação do Frete por conta do Destinatário (FOB)</option>
-            <option value="2">2 - Contratação do Frete por conta de Terceiros</option>
-            <option value="3">3 - Transporte Próprio por conta do Remetente</option>
-            <option value="4">4 - Transporte Próprio por conta do Destinatário</option>
-            <option value="9">9 - Sem Ocorrência de Transporte</option>
-          </select>
-        </div>
-      </div>
-      <h5 class="form-section-subtitle">Dados da transportadora</h5>
-      <div class="form-grid-3" id="nfTransportadorDados">
-        <div class="form-group">
-          <label for="nf_transp_nome">Nome</label>
-          <div class="nf-produto-ac-wrap">
-            <input type="text" id="nf_transp_nome" placeholder="Razão social" autocomplete="off">
-            <ul class="nf-produto-ac-list" id="nfTranspAcList"></ul>
+        <div class="form-section" id="formSectionCalcImposto">
+          <div class="calc-imposto-header">
+            <h4 class="form-section-title" style="margin: 0;">Cálculo de imposto</h4>
+            <div class="calc-imposto-toggle-group">
+              <span>Cálculo automático ligado</span>
+              <div class="toggle-wrap">
+                <div class="toggle-switch on" id="nfCalcAutoToggle" role="switch" aria-checked="true"
+                  title="Ativar/desativar cálculo automático"></div>
+                <span id="nfCalcAutoLabel" style="font-size: 0.85rem; color: #a1a1aa;">Ativado</span>
+              </div>
+            </div>
+          </div>
+          <div class="form-grid-4" id="calcImpostoInputs">
+            <div class="form-group">
+              <label for="nf_total_produtos">Total dos Produtos (R$)</label>
+              <input type="number" id="nf_total_produtos" step="0.01" min="0" placeholder="0,00">
+            </div>
+            <div class="form-group">
+              <label for="nf_valor_frete_calc">Valor do Frete (R$)</label>
+              <input type="number" id="nf_valor_frete_calc" step="0.01" min="0" placeholder="0,00">
+            </div>
+            <div class="form-group">
+              <label for="nf_valor_seguro_calc">Valor do Seguro (R$)</label>
+              <input type="number" id="nf_valor_seguro_calc" step="0.01" min="0" placeholder="0,00">
+            </div>
+            <div class="form-group">
+              <label for="nf_outras_despesas">Outras Despesas (R$)</label>
+              <input type="number" id="nf_outras_despesas" step="0.01" min="0" placeholder="0,00">
+            </div>
+            <div class="form-group">
+              <label for="nf_desconto_calc">Desconto (R$)</label>
+              <input type="number" id="nf_desconto_calc" step="0.01" min="0" placeholder="0,00">
+            </div>
+            <div class="form-group">
+              <label for="nf_total_nota">Total da Nota (R$)</label>
+              <input type="number" id="nf_total_nota" step="0.01" min="0" placeholder="0,00">
+            </div>
+            <div class="form-group">
+              <label for="nf_base_icms">Base ICMS</label>
+              <input type="number" id="nf_base_icms" step="0.01" min="0" placeholder="0,00">
+            </div>
+            <div class="form-group">
+              <label for="nf_valor_icms">Valor ICMS</label>
+              <input type="number" id="nf_valor_icms" step="0.01" min="0" placeholder="0,00">
+            </div>
+            <div class="form-group">
+              <label for="nf_base_icms_st">Base ICMS ST</label>
+              <input type="number" id="nf_base_icms_st" step="0.01" min="0" placeholder="0,00">
+            </div>
+            <div class="form-group">
+              <label for="nf_valor_icms_st">Valor ICMS ST</label>
+              <input type="number" id="nf_valor_icms_st" step="0.01" min="0" placeholder="0,00">
+            </div>
+            <div class="form-group">
+              <label for="nf_valor_ipi">Valor IPI</label>
+              <input type="number" id="nf_valor_ipi" step="0.01" min="0" placeholder="0,00">
+            </div>
+            <div class="form-group">
+              <label for="nf_total_is">Total IS (R$)</label>
+              <input type="number" id="nf_total_is" step="0.01" min="0" placeholder="0,00">
+            </div>
+            <div class="form-group">
+              <label for="nf_total_ibs">Total IBS (R$)</label>
+              <input type="number" id="nf_total_ibs" step="0.01" min="0" placeholder="0,00">
+            </div>
+            <div class="form-group">
+              <label for="nf_total_cbs">Total CBS (R$)</label>
+              <input type="number" id="nf_total_cbs" step="0.01" min="0" placeholder="0,00">
+            </div>
+            <div class="form-group">
+              <label for="nf_total_servicos">Total dos Serviços</label>
+              <input type="number" id="nf_total_servicos" step="0.01" min="0" placeholder="0,00">
+            </div>
+            <div class="form-group">
+              <label for="nf_valor_issqn">Valor ISSQN</label>
+              <input type="number" id="nf_valor_issqn" step="0.01" min="0" placeholder="0,00">
+            </div>
+            <div class="form-group">
+              <label for="nf_valor_funrural">Valor Funrural (R$)</label>
+              <input type="number" id="nf_valor_funrural" step="0.01" min="0" placeholder="0,00">
+            </div>
+            <div class="form-group">
+              <label for="nf_total_faturado">Total Faturado (R$)</label>
+              <input type="number" id="nf_total_faturado" step="0.01" min="0" placeholder="0,00">
+            </div>
+            <div class="form-group">
+              <label for="nf_total_tributos" class="label-with-info">Total A. Tributos (R$) <span class="info-icon"
+                  title="Valor aproximado dos tributos">&#8505;</span></label>
+              <input type="number" id="nf_total_tributos" step="0.01" min="0" placeholder="0,00">
+            </div>
           </div>
         </div>
-        <div class="form-group">
-          <label for="nf_transp_cnpj_cpf">CNPJ/CPF</label>
-          <input type="text" id="nf_transp_cnpj_cpf" placeholder="Apenas números">
-        </div>
-        <div class="form-group">
-          <label for="nf_transp_ie">Inscrição Estadual</label>
-          <input type="text" id="nf_transp_ie" placeholder="IE">
-        </div>
+        <div class="form-section">
+          <h4 class="form-section-title">Transportador / Volumes</h4>
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="nf_transporte">Transporte</label>
+              <select id="nf_transporte">
+                <option value="nao">Não haverá transporte</option>
+                <option value="manual">Inserir transportadora manualmente</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="nf_frete_por_conta">Frete por conta</label>
+              <select id="nf_frete_por_conta">
+                <option value="0">0 - Contratação do Frete por conta do Remetente (CIF)</option>
+                <option value="1">1 - Contratação do Frete por conta do Destinatário (FOB)</option>
+                <option value="2">2 - Contratação do Frete por conta de Terceiros</option>
+                <option value="3">3 - Transporte Próprio por conta do Remetente</option>
+                <option value="4">4 - Transporte Próprio por conta do Destinatário</option>
+                <option value="9">9 - Sem Ocorrência de Transporte</option>
+              </select>
+            </div>
+          </div>
+          <h5 class="form-section-subtitle">Dados da transportadora</h5>
+          <div class="form-grid-3" id="nfTransportadorDados">
+            <div class="form-group">
+              <label for="nf_transp_nome">Nome</label>
+              <div class="nf-produto-ac-wrap">
+                <input type="text" id="nf_transp_nome" placeholder="Razão social" autocomplete="off">
+                <ul class="nf-produto-ac-list" id="nfTranspAcList"></ul>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="nf_transp_cnpj_cpf">CNPJ/CPF</label>
+              <input type="text" id="nf_transp_cnpj_cpf" placeholder="Apenas números">
+            </div>
+            <div class="form-group">
+              <label for="nf_transp_ie">Inscrição Estadual</label>
+              <input type="text" id="nf_transp_ie" placeholder="IE">
+            </div>
 
-        <div class="form-group">
-          <label for="nf_transp_endereco">Endereço da transportadora</label>
-          <input type="text" id="nf_transp_endereco" placeholder="Logradouro, número, bairro">
-        </div>
-        <div class="form-group">
-          <label for="nf_transp_municipio">Município</label>
-          <input type="text" id="nf_transp_municipio" placeholder="Cidade">
-        </div>
-        <div class="form-group">
-          <label for="nf_transp_uf">UF</label>
-          <select id="nf_transp_uf">
-            <option value="">UF</option>
-            <option value="MG">MG</option>
-            <option value="SP">SP</option>
-            <option value="RJ">RJ</option>
-            <option value="PR">PR</option>
-            <option value="SC">SC</option>
-            <option value="RS">RS</option>
-            <option value="BA">BA</option>
-            <option value="CE">CE</option>
-            <option value="PE">PE</option>
-            <option value="GO">GO</option>
-            <option value="ES">ES</option>
-            <option value="DF">DF</option>
-            <option value="AC">AC</option>
-            <option value="AL">AL</option>
-            <option value="AM">AM</option>
-            <option value="AP">AP</option>
-            <option value="MA">MA</option>
-            <option value="MS">MS</option>
-            <option value="MT">MT</option>
-            <option value="PA">PA</option>
-            <option value="PB">PB</option>
-            <option value="PI">PI</option>
-            <option value="RN">RN</option>
-            <option value="RO">RO</option>
-            <option value="RR">RR</option>
-            <option value="SE">SE</option>
-            <option value="TO">TO</option>
-          </select>
-        </div>
-      </div>
-      <h5 class="form-section-subtitle">Dados do volume</h5>
-      <div class="form-grid-2">
-        <div class="form-group">
-          <label for="nf_volume_quantidade">Quantidade</label>
-          <input type="number" id="nf_volume_quantidade" min="1" value="1" placeholder="1">
-        </div>
-        <div class="form-group">
-          <label for="nf_volume_peso_bruto" class="label-with-info">Peso Bruto <span class="info-icon"
-              title="Em kg">&#8505;</span></label>
-          <input type="number" id="nf_volume_peso_bruto" step="0.001" min="0" placeholder="0,000">
-        </div>
+            <div class="form-group">
+              <label for="nf_transp_endereco">Endereço da transportadora</label>
+              <input type="text" id="nf_transp_endereco" placeholder="Logradouro, número, bairro">
+            </div>
+            <div class="form-group">
+              <label for="nf_transp_municipio">Município</label>
+              <input type="text" id="nf_transp_municipio" placeholder="Cidade">
+            </div>
+            <div class="form-group">
+              <label for="nf_transp_uf">UF</label>
+              <select id="nf_transp_uf">
+                <option value="">UF</option>
+                <option value="MG">MG</option>
+                <option value="SP">SP</option>
+                <option value="RJ">RJ</option>
+                <option value="PR">PR</option>
+                <option value="SC">SC</option>
+                <option value="RS">RS</option>
+                <option value="BA">BA</option>
+                <option value="CE">CE</option>
+                <option value="PE">PE</option>
+                <option value="GO">GO</option>
+                <option value="ES">ES</option>
+                <option value="DF">DF</option>
+                <option value="AC">AC</option>
+                <option value="AL">AL</option>
+                <option value="AM">AM</option>
+                <option value="AP">AP</option>
+                <option value="MA">MA</option>
+                <option value="MS">MS</option>
+                <option value="MT">MT</option>
+                <option value="PA">PA</option>
+                <option value="PB">PB</option>
+                <option value="PI">PI</option>
+                <option value="RN">RN</option>
+                <option value="RO">RO</option>
+                <option value="RR">RR</option>
+                <option value="SE">SE</option>
+                <option value="TO">TO</option>
+              </select>
+            </div>
+          </div>
+          <h5 class="form-section-subtitle">Dados do volume</h5>
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="nf_volume_quantidade">Quantidade</label>
+              <input type="number" id="nf_volume_quantidade" min="1" value="1" placeholder="1">
+            </div>
+            <div class="form-group">
+              <label for="nf_volume_peso_bruto" class="label-with-info">Peso Bruto <span class="info-icon"
+                  title="Em kg">&#8505;</span></label>
+              <input type="number" id="nf_volume_peso_bruto" step="0.001" min="0" placeholder="0,000">
+            </div>
 
-      </div>
-    </div>
-    <!-- Seções Pagamento, Categoria e Intermediador removidas a pedido do usuário -->
-    <div class="form-section">
-      <h4 class="form-section-title">Informações adicionais</h4>
-      <div class="form-grid-2">
-        <div class="form-group" style="grid-column: 1 / -1;">
-          <label for="nf_info_complementares" class="label-with-info">Informações complementares (natureza) <span
-              class="info-icon" title="Naturezas de operação">&#8505;</span></label>
-          <textarea id="nf_info_complementares" rows="3" placeholder="Informações complementares ao cliente"></textarea>
+          </div>
         </div>
-        <div class="form-group" style="grid-column: 1 / -1;">
-          <label for="nf_info_fisco_natureza" class="label-with-info">Informações adicionais de interesse do fisco
-            (natureza) <span class="info-icon" title="Naturezas de operação">&#8505;</span></label>
-          <textarea id="nf_info_fisco_natureza" rows="2" placeholder="Informações de interesse do fisco"></textarea>
+        <!-- Seções Pagamento, Categoria e Intermediador removidas a pedido do usuário -->
+        <div class="form-section">
+          <h4 class="form-section-title">Informações adicionais</h4>
+          <div class="form-grid-2">
+            <div class="form-group" style="grid-column: 1 / -1;">
+              <label for="nf_info_complementares" class="label-with-info">Informações complementares (natureza) <span
+                  class="info-icon" title="Naturezas de operação">&#8505;</span></label>
+              <textarea id="nf_info_complementares" rows="3"
+                placeholder="Informações complementares ao cliente"></textarea>
+            </div>
+            <div class="form-group" style="grid-column: 1 / -1;">
+              <label for="nf_info_fisco_natureza" class="label-with-info">Informações adicionais de interesse do fisco
+                (natureza) <span class="info-icon" title="Naturezas de operação">&#8505;</span></label>
+              <textarea id="nf_info_fisco_natureza" rows="2" placeholder="Informações de interesse do fisco"></textarea>
+            </div>
+          </div>
         </div>
-      </div>
+      </form>
     </div>
-    </form>
-  </div>
   </div>
   <div class="sheet-overlay" id="sheetCliente">
     <div class="sheet-panel sheet-cliente">

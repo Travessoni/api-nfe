@@ -1856,6 +1856,10 @@ function initBindings() {
   updateClienteBtnIcon();
   if (typeof lucide !== 'undefined') lucide.createIcons();
   var invoiceId = new URLSearchParams(window.location.search).get('invoiceId');
-  if (invoiceId) await loadByInvoiceId(invoiceId);
+  if (invoiceId) {
+    await loadByInvoiceId(invoiceId);
+  } else {
+    addItemRow({}, null);
+  }
 })();
 
