@@ -688,7 +688,8 @@ function getPayloadFromForm() {
     data_entrada_saida: get('nf_data_entrada_saida'),
     finalidade_emissao: get('nf_finalidade_emissao') || '1',
     tipo_documento: '1',
-    consumidor_final: get('nf_consumidor_final') || '1',
+    regime_tributario_emitente: get('nf_crt') || '3',
+    consumidor_final: (document.getElementById('nf_consumidor_final') && document.getElementById('nf_consumidor_final').checked) ? '1' : '0',
     presenca_comprador: get('nf_presenca_comprador') || '2',
     local_destino: localDestino,
     indicador_inscricao_estadual_destinatario: (function () {
@@ -708,6 +709,7 @@ function getPayloadFromForm() {
     inscricao_estadual_emitente: get('nf_inscricao_estadual_emitente'),
     telefone_emitente: get('nf_telefone_emitente') || undefined,
     nome_destinatario: get('nf_nome_destinatario'),
+    nome_fantasia_destinatario: get('nf_nome_fantasia_destinatario') || undefined,
     inscricao_estadual_destinatario: get('nf_inscricao_estadual_destinatario') || 'ISENTO',
     logradouro_destinatario: get('nf_logradouro_destinatario'),
     numero_destinatario: get('nf_numero_destinatario') || 'S/N',
@@ -729,6 +731,8 @@ function getPayloadFromForm() {
   else if (tipoPessoa === 'pj' && cpfCnpj.length === 14) payload.cnpj_destinatario = cpfCnpj;
   var telDest = get('nf_telefone_destinatario');
   if (telDest) payload.telefone_destinatario = telDest;
+  var emailDest = get('nf_email_destinatario');
+  if (emailDest) payload.email_destinatario = emailDest;
   var desc = parseFloat(get('nf_valor_desconto'));
   if (desc > 0) payload.valor_desconto = desc;
   var infoContrib = get('nf_info_complementares');
@@ -1018,8 +1022,11 @@ function fillFormFromPayload(p) {
   if (fpDataEntradaSaida) { if (dtEntradaSaida) fpDataEntradaSaida.setDate(dtEntradaSaida); else fpDataEntradaSaida.clear(); }
   else set('nf_data_entrada_saida', dtEntradaSaida);
   set('nf_finalidade_emissao', p.finalidade_emissao);
-  setSel('nf_consumidor_final', p.consumidor_final);
-  setSel('nf_presenca_comprador', p.presenca_comprador);
+  setSel('nf_presenca_comprador', (p.presenca_comprador === 0 ? 9 : p.presenca_comprador));
+  if (document.getElementById('nf_consumidor_final')) {
+    document.getElementById('nf_consumidor_final').checked = String(p.consumidor_final) !== '0';
+  }
+  setSel('nf_crt', p.regime_tributario_emitente || '3');
   setSel('nf_local_destino', p.local_destino);
   setSel('nf_indicador_ie_dest', (p.indicador_inscricao_estadual_destinatario === 2 ? 9 : p.indicador_inscricao_estadual_destinatario));
   set('nf_cnpj_emitente', p.cnpj_emitente);
@@ -1034,6 +1041,7 @@ function fillFormFromPayload(p) {
   set('nf_cep_emitente', p.cep_emitente);
   set('nf_telefone_emitente', p.telefone_emitente);
   set('nf_nome_destinatario', p.nome_destinatario);
+  set('nf_nome_fantasia_destinatario', p.nome_fantasia_destinatario);
   setClienteUI(p.nome_destinatario || '', selectedContatoId);
   var cpfCnpj = (p.cpf_destinatario || p.cnpj_destinatario || '').toString().replace(/\D/g, '');
   var tipoSel = document.getElementById('nf_tipo_pessoa_dest');
@@ -1045,6 +1053,7 @@ function fillFormFromPayload(p) {
   }
   set('nf_inscricao_estadual_destinatario', p.inscricao_estadual_destinatario);
   set('nf_telefone_destinatario', p.telefone_destinatario);
+  set('nf_email_destinatario', p.email_destinatario);
   set('nf_logradouro_destinatario', p.logradouro_destinatario);
   set('nf_numero_destinatario', p.numero_destinatario);
   set('nf_complemento_destinatario', p.complemento_destinatario);

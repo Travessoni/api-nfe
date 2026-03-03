@@ -90,6 +90,7 @@ export interface FocusNFePayload {
   telefone_emitente?: string;
   // Destinatário
   nome_destinatario: string;
+  nome_fantasia_destinatario?: string;
   cpf_destinatario?: string;
   cnpj_destinatario?: string;
   inscricao_estadual_destinatario?: string;
@@ -103,6 +104,7 @@ export interface FocusNFePayload {
   complemento_destinatario?: string;
   /** Omitir quando vazio (não enviar string vazia). */
   telefone_destinatario?: string;
+  email_destinatario?: string;
   // Valores (API espera number)
   valor_frete: number;
   valor_seguro: number;

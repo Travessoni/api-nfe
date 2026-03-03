@@ -754,6 +754,8 @@ export function buildFocusNFePayload(
     uf_destinatario: ufDestinatario,
     pais_destinatario: cliente.pais ?? 'Brasil',
     cep_destinatario: cepDestinatario,
+    ...(cliente.email != null && { email_destinatario: String(cliente.email).trim() }),
+    ...(cliente.nomeFantasia != null && { nome_fantasia_destinatario: String(cliente.nomeFantasia).trim() }),
     valor_frete: Math.round(valorFrete * 100) / 100,
     valor_seguro: 0,
     valor_total: Math.round(valorTotal * 100) / 100,
