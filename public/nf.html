@@ -453,7 +453,7 @@
             </div>
           </div>
           <h5 class="form-section-subtitle">Dados da transportadora</h5>
-          <div class="form-grid-2" id="nfTransportadorDados">
+          <div class="form-grid-3" id="nfTransportadorDados">
             <div class="form-group">
               <label for="nf_transp_nome">Nome</label>
               <div class="nf-produto-ac-wrap">
@@ -461,7 +461,6 @@
                 <ul class="nf-produto-ac-list" id="nfTranspAcList"></ul>
               </div>
             </div>
-
             <div class="form-group">
               <label for="nf_transp_cnpj_cpf">CNPJ/CPF</label>
               <input type="text" id="nf_transp_cnpj_cpf" placeholder="Apenas números">
@@ -469,6 +468,15 @@
             <div class="form-group">
               <label for="nf_transp_ie">Inscrição Estadual</label>
               <input type="text" id="nf_transp_ie" placeholder="IE">
+            </div>
+
+            <div class="form-group">
+              <label for="nf_transp_endereco">Endereço da transportadora</label>
+              <input type="text" id="nf_transp_endereco" placeholder="Logradouro, número, bairro">
+            </div>
+            <div class="form-group">
+              <label for="nf_transp_municipio">Município</label>
+              <input type="text" id="nf_transp_municipio" placeholder="Cidade">
             </div>
             <div class="form-group">
               <label for="nf_transp_uf">UF</label>
@@ -502,14 +510,6 @@
                 <option value="SE">SE</option>
                 <option value="TO">TO</option>
               </select>
-            </div>
-            <div class="form-group">
-              <label for="nf_transp_municipio">Município</label>
-              <input type="text" id="nf_transp_municipio" placeholder="Cidade">
-            </div>
-            <div class="form-group" style="grid-column: 1 / -1;">
-              <label for="nf_transp_endereco">Endereço da transportadora</label>
-              <input type="text" id="nf_transp_endereco" placeholder="Logradouro, número, bairro">
             </div>
           </div>
           <h5 class="form-section-subtitle">Dados do volume</h5>
