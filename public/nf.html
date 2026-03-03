@@ -493,39 +493,7 @@
                 <ul class="nf-produto-ac-list" id="nfTranspAcList"></ul>
               </div>
             </div>
-            <div class="form-group">
-              <label for="nf_transp_uf_veiculo">UF veículo</label>
-              <select id="nf_transp_uf_veiculo">
-                <option value="">UF</option>
-                <option value="MG">MG</option>
-                <option value="SP">SP</option>
-                <option value="RJ">RJ</option>
-                <option value="PR">PR</option>
-                <option value="SC">SC</option>
-                <option value="RS">RS</option>
-                <option value="BA">BA</option>
-                <option value="CE">CE</option>
-                <option value="PE">PE</option>
-                <option value="GO">GO</option>
-                <option value="ES">ES</option>
-                <option value="DF">DF</option>
-                <option value="AC">AC</option>
-                <option value="AL">AL</option>
-                <option value="AM">AM</option>
-                <option value="AP">AP</option>
-                <option value="MA">MA</option>
-                <option value="MS">MS</option>
-                <option value="MT">MT</option>
-                <option value="PA">PA</option>
-                <option value="PB">PB</option>
-                <option value="PI">PI</option>
-                <option value="RN">RN</option>
-                <option value="RO">RO</option>
-                <option value="RR">RR</option>
-                <option value="SE">SE</option>
-                <option value="TO">TO</option>
-              </select>
-            </div>
+
             <div class="form-group">
               <label for="nf_transp_cnpj_cpf">CNPJ/CPF</label>
               <input type="text" id="nf_transp_cnpj_cpf" placeholder="Apenas números">
@@ -587,30 +555,7 @@
                   title="Em kg">&#8505;</span></label>
               <input type="number" id="nf_volume_peso_bruto" step="0.001" min="0" placeholder="0,000">
             </div>
-            <div class="form-group">
-              <label for="nf_volume_peso_liquido" class="label-with-info">Peso Líquido <span class="info-icon"
-                  title="Em kg">&#8505;</span></label>
-              <input type="number" id="nf_volume_peso_liquido" step="0.001" min="0" placeholder="0,000">
-            </div>
-            <div class="form-group">
-              <label for="nf_volume_numeracao">Numeração do volume</label>
-              <input type="text" id="nf_volume_numeracao" placeholder="Opcional">
-            </div>
-            <div class="form-group">
-              <label for="nf_volume_marca" class="label-with-info">Marca <span class="info-icon"
-                  title="Marca do volume">&#8505;</span></label>
-              <input type="text" id="nf_volume_marca" placeholder="Opcional">
-            </div>
-            <div class="form-group">
-              <label for="nf_volume_especie">Espécie</label>
-              <select id="nf_volume_especie">
-                <option value="">Selecione uma...</option>
-                <option value="VOLUME">Volume</option>
-                <option value="CAIXA">Caixa</option>
-                <option value="PACOTE">Pacote</option>
-                <option value="OUTROS">Outros</option>
-              </select>
-            </div>
+
           </div>
         </div>
         <!-- Seções Pagamento, Categoria e Intermediador removidas a pedido do usuário -->
@@ -866,7 +811,6 @@
           <button type="button" class="sheet-tab" data-tab="importacao">Importação</button>
           <button type="button" class="sheet-tab" data-tab="outros">Outros</button>
           <button type="button" class="sheet-tab" data-tab="estoque">Estoque</button>
-          <button type="button" class="sheet-tab" data-tab="retencoes">Retenções</button>
           <button type="button" class="sheet-tab" data-tab="is">IS</button>
           <button type="button" class="sheet-tab" data-tab="ibs">IBS</button>
           <button type="button" class="sheet-tab" data-tab="cbs">CBS</button>
@@ -1160,26 +1104,7 @@
             </div>
           </div>
         </div>
-        <div id="sheetTabRetencoes" class="sheet-tab-content">
-          <div class="form-section">
-            <div class="form-grid-2">
-              <div class="form-group">
-                <label>Reter CSRF</label>
-                <select id="sheet_reter_csrf" data-field="reter_csrf">
-                  <option value="Não">Não</option>
-                  <option value="Sim">Sim</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>Reter IR</label>
-                <select id="sheet_reter_ir" data-field="reter_ir">
-                  <option value="Não">Não</option>
-                  <option value="Sim">Sim</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        </div>
+
         <div id="sheetTabIs" class="sheet-tab-content">
           <div class="form-section">
             <p style="font-size: 0.85rem; color: #a1a1aa;">IS aguardando definições. Os campos de IS estão aguardando

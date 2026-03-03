@@ -811,24 +811,9 @@ function getPayloadFromForm() {
 
   // Volume Data
   var volQtde = parseInt(get('nf_volume_quantidade'), 10);
-  var volEspecie = get('nf_volume_especie');
-  var volMarca = get('nf_volume_marca');
-  var volNum = get('nf_volume_numeracao');
+  if (!isNaN(volQtde) && volQtde > 0) payload.quantidade_volumes = volQtde;
   var volPesoB = parseFloat(get('nf_volume_peso_bruto'));
-  var volPesoL = parseFloat(get('nf_volume_peso_liquido'));
-
-  var hasVolume = (!isNaN(volQtde) && volQtde > 0) || volEspecie || volMarca || volNum || (!isNaN(volPesoB)) || (!isNaN(volPesoL));
-
-  if (hasVolume) {
-    var volumeObj = {};
-    if (!isNaN(volQtde) && volQtde > 0) volumeObj.quantidade = volQtde;
-    if (volEspecie) volumeObj.especie = volEspecie;
-    if (volMarca) volumeObj.marca = volMarca;
-    if (volNum) volumeObj.numeracao = volNum;
-    if (!isNaN(volPesoB) && volPesoB > 0) volumeObj.peso_bruto = volPesoB;
-    if (!isNaN(volPesoL) && volPesoL > 0) volumeObj.peso_liquido = volPesoL;
-    payload.volumes = [volumeObj];
-  }
+  if (!isNaN(volPesoB) && volPesoB > 0) payload.peso_bruto_volumes = volPesoB;
 
   return payload;
 }
@@ -1106,13 +1091,8 @@ function fillFormFromPayload(p) {
     }
   }
 
-  var volObj = (p.volumes && p.volumes.length > 0) ? p.volumes[0] : p;
-  set('nf_volume_quantidade', volObj.quantidade != null ? volObj.quantidade : (volObj.quantidade_volumes != null ? volObj.quantidade_volumes : ''));
-  set('nf_volume_especie', volObj.especie || volObj.especie_volumes || '');
-  set('nf_volume_marca', volObj.marca || volObj.marca_volumes || '');
-  set('nf_volume_numeracao', volObj.numeracao || volObj.numeracao_volumes || '');
-  set('nf_volume_peso_bruto', volObj.peso_bruto != null ? volObj.peso_bruto : (volObj.peso_bruto_volumes != null ? volObj.peso_bruto_volumes : ''));
-  set('nf_volume_peso_liquido', volObj.peso_liquido != null ? volObj.peso_liquido : (volObj.peso_liquido_volumes != null ? volObj.peso_liquido_volumes : ''));
+  set('nf_volume_quantidade', p.quantidade_volumes != null ? p.quantidade_volumes : '');
+  set('nf_volume_peso_bruto', p.peso_bruto_volumes != null ? p.peso_bruto_volumes : '');
   var infoContrib = (p.informacoes_adicionais_contribuinte != null ? String(p.informacoes_adicionais_contribuinte) : '').trim();
   set('nf_info_complementares', infoContrib);
   var tbody = document.getElementById('nfItemsBody');
