@@ -3,8 +3,9 @@
 
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Nota Fiscal</title>
+  <link rel="icon" type="image/png" href="favicon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -318,7 +319,7 @@
         </div>
         <div class="form-section">
           <h4 class="form-section-title">Totais</h4>
-          <div class="form-grid-2">
+          <div class="form-grid-4">
             <div class="form-group">
               <label for="nf_valor_produtos">Valor produtos (R$)</label>
               <input type="number" id="nf_valor_produtos" name="valor_produtos" step="0.01" min="0">
@@ -426,39 +427,6 @@
               <label for="nf_total_tributos" class="label-with-info">Total A. Tributos (R$) <span class="info-icon"
                   title="Valor aproximado dos tributos">&#8505;</span></label>
               <input type="number" id="nf_total_tributos" step="0.01" min="0" placeholder="0,00">
-            </div>
-          </div>
-        </div>
-        <div class="form-section">
-          <h4 class="form-section-title">Retenções</h4>
-          <div class="form-grid-4">
-            <div class="form-group">
-              <label for="nf_minimo_retencao">Mínimo p/ retenção</label>
-              <input type="number" id="nf_minimo_retencao" step="0.01" min="0" value="0" placeholder="0,00">
-            </div>
-            <div class="form-group">
-              <label for="nf_base_retencoes">Base p/ retenções</label>
-              <input type="number" id="nf_base_retencoes" step="0.01" min="0" placeholder="0,00">
-            </div>
-            <div class="form-group">
-              <label for="nf_valor_ir">Valor IR</label>
-              <input type="number" id="nf_valor_ir" step="0.01" min="0" placeholder="0,00">
-            </div>
-            <div class="form-group">
-              <label for="nf_valor_csll">Valor CSLL</label>
-              <input type="number" id="nf_valor_csll" step="0.01" min="0" placeholder="0,00">
-            </div>
-            <div class="form-group">
-              <label for="nf_valor_pis_retido">Valor PIS retido</label>
-              <input type="number" id="nf_valor_pis_retido" step="0.01" min="0" placeholder="0,00">
-            </div>
-            <div class="form-group">
-              <label for="nf_valor_cofins_retido">Valor COFINS retido</label>
-              <input type="number" id="nf_valor_cofins_retido" step="0.01" min="0" placeholder="0,00">
-            </div>
-            <div class="form-group">
-              <label for="nf_valor_iss_retido">Valor ISS retido</label>
-              <input type="number" id="nf_valor_iss_retido" step="0.01" min="0" placeholder="0,00">
             </div>
           </div>
         </div>

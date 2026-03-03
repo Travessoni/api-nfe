@@ -1,8 +1,10 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" href="favicon.png">
   <title>Naturezas de operação</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -11,30 +13,116 @@
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="modal-scroll-lock.js"></script>
   <style>
-    body { padding: 24px; }
-    .page-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin-bottom: 24px; }
-    .page-header h1 { margin: 0; }
-    .page-header .page-header-divider { width: 1px; height: 24px; background: #27272A; margin: 0 16px; flex-shrink: 0; }
-    .page-header .page-header-filter { position: relative; display: inline-flex; align-items: center; }
-    .page-header .page-header-filter select { min-width: 180px; border: none; background: transparent; appearance: none; -webkit-appearance: none; padding-right: 8px; font-size: inherit; color: inherit; cursor: pointer; outline: none; box-shadow: none; }
-    .page-header .page-header-filter select:focus { outline: none; box-shadow: none; }
-    .naturezas-main .card { padding: 0; }
-    .naturezas-table-wrap { overflow-x: auto; }
-    .naturezas-table { width: 100%; }
-    .naturezas-table th, .naturezas-table td { padding: 0 16px; text-align: left; border-bottom: 1px solid #27272A; }
-    .naturezas-table th { height: 48px; color: #a1a1aa; font-weight: 500; }
-    .naturezas-table td { height: 63px; }
-    .naturezas-table tbody tr:hover { background: #27272A; }
-    .naturezas-table .col-desc { min-width: 200px; }
-    .naturezas-table .col-del { width: 72px; text-align: right; }
-    .naturezas-table .col-del-btns { display: inline-flex; flex-direction: row; align-items: center; justify-content: flex-end; gap: 4px; white-space: nowrap; }
+    body {
+      padding: 24px;
+    }
+
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .page-header h1 {
+      margin: 0;
+    }
+
+    .page-header .page-header-divider {
+      width: 1px;
+      height: 24px;
+      background: #27272A;
+      margin: 0 16px;
+      flex-shrink: 0;
+    }
+
+    .page-header .page-header-filter {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .page-header .page-header-filter select {
+      min-width: 180px;
+      border: none;
+      background: transparent;
+      appearance: none;
+      -webkit-appearance: none;
+      padding-right: 8px;
+      font-size: inherit;
+      color: inherit;
+      cursor: pointer;
+      outline: none;
+      box-shadow: none;
+    }
+
+    .page-header .page-header-filter select:focus {
+      outline: none;
+      box-shadow: none;
+    }
+
+    .naturezas-main .card {
+      padding: 0;
+    }
+
+    .naturezas-table-wrap {
+      overflow-x: auto;
+    }
+
+    .naturezas-table {
+      width: 100%;
+    }
+
+    .naturezas-table th,
+    .naturezas-table td {
+      padding: 0 16px;
+      text-align: left;
+      border-bottom: 1px solid #27272A;
+    }
+
+    .naturezas-table th {
+      height: 48px;
+      color: #a1a1aa;
+      font-weight: 500;
+    }
+
+    .naturezas-table td {
+      height: 63px;
+    }
+
+    .naturezas-table tbody tr:hover {
+      background: #27272A;
+    }
+
+    .naturezas-table .col-desc {
+      min-width: 200px;
+    }
+
+    .naturezas-table .col-del {
+      width: 72px;
+      text-align: right;
+    }
+
+    .naturezas-table .col-del-btns {
+      display: inline-flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 4px;
+      white-space: nowrap;
+    }
   </style>
 </head>
+
 <body>
   <div class="container">
     <div class="page-header">
       <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 0;">
-        <a href="nf.html" class="secondary btn-icon-lucide" style="display: inline-flex; align-items: center; gap: 6px; text-decoration: none; color: inherit; margin-right: 16px;"><i data-lucide="arrow-left"></i> Voltar</a>
+        <a href="nf.html" class="secondary btn-icon-lucide"
+          style="display: inline-flex; align-items: center; gap: 6px; text-decoration: none; color: inherit; margin-right: 16px;"><i
+            data-lucide="arrow-left"></i> Voltar</a>
         <h1>Naturezas de operação</h1>
         <span class="page-header-divider" aria-hidden="true"></span>
         <div class="page-header-filter">
@@ -44,7 +132,8 @@
         </div>
       </div>
       <div class="context-actions">
-        <button type="button" class="primary" id="btnNovaNatureza" style="display: inline-flex; align-items: center; gap: 6px;"><i data-lucide="plus"></i> Nova natureza</button>
+        <button type="button" class="primary" id="btnNovaNatureza"
+          style="display: inline-flex; align-items: center; gap: 6px;"><i data-lucide="plus"></i> Nova natureza</button>
       </div>
     </div>
 
@@ -64,7 +153,8 @@
             </tbody>
           </table>
         </div>
-        <div id="naturezasEmpty" class="empty" style="display: none; padding: 24px;">Nenhuma natureza de operação encontrada.</div>
+        <div id="naturezasEmpty" class="empty" style="display: none; padding: 24px;">Nenhuma natureza de operação
+          encontrada.</div>
       </div>
     </div>
 
@@ -76,7 +166,8 @@
     <div class="sheet-panel">
       <div class="sheet-header">
         <h3>Natureza da operação</h3>
-        <button type="button" class="modal-close" id="sheetNaturezaClose" aria-label="Fechar"><i data-lucide="x"></i></button>
+        <button type="button" class="modal-close" id="sheetNaturezaClose" aria-label="Fechar"><i
+            data-lucide="x"></i></button>
       </div>
       <div class="sheet-body">
         <input type="hidden" id="natId" value="">
@@ -121,18 +212,25 @@
                 <option value="9" selected>9 - Operação não presencial, outros</option>
               </select>
             </div>
-            <div class="toggles-row" style="display: flex; flex-wrap: wrap; gap: 24px 32px; align-items: center; grid-column: 1 / -1;">
-              <div class="form-group toggle-wrap" style="margin: 0; display: inline-flex; align-items: center; gap: 8px;">
+            <div class="toggles-row"
+              style="display: flex; flex-wrap: wrap; gap: 24px 32px; align-items: center; grid-column: 1 / -1;">
+              <div class="form-group toggle-wrap"
+                style="margin: 0; display: inline-flex; align-items: center; gap: 8px;">
                 <span style="font-size: 14px; color: #a1a1aa;">Faturada</span>
-                <button type="button" class="toggle-switch on" id="natFaturada" aria-pressed="true" aria-label="Faturada"></button>
+                <button type="button" class="toggle-switch on" id="natFaturada" aria-pressed="true"
+                  aria-label="Faturada"></button>
               </div>
-              <div class="form-group toggle-wrap" style="margin: 0; display: inline-flex; align-items: center; gap: 8px;">
+              <div class="form-group toggle-wrap"
+                style="margin: 0; display: inline-flex; align-items: center; gap: 8px;">
                 <span style="font-size: 14px; color: #a1a1aa;">Consumidor final</span>
-                <button type="button" class="toggle-switch on" id="natConsumidorFinal" aria-pressed="true" aria-label="Consumidor final"></button>
+                <button type="button" class="toggle-switch on" id="natConsumidorFinal" aria-pressed="true"
+                  aria-label="Consumidor final"></button>
               </div>
-              <div class="form-group toggle-wrap" style="margin: 0; display: inline-flex; align-items: center; gap: 8px;">
+              <div class="form-group toggle-wrap"
+                style="margin: 0; display: inline-flex; align-items: center; gap: 8px;">
                 <span style="font-size: 14px; color: #a1a1aa;">Operação de devolução</span>
-                <button type="button" class="toggle-switch" id="natOperacaoDevolucao" aria-pressed="false" aria-label="Operação de devolução"></button>
+                <button type="button" class="toggle-switch" id="natOperacaoDevolucao" aria-pressed="false"
+                  aria-label="Operação de devolução"></button>
               </div>
             </div>
           </div>
@@ -169,7 +267,8 @@
               </thead>
               <tbody id="regrasBodyIcms"></tbody>
             </table>
-            <button type="button" class="btn-add-regra" data-tab="icms"><i data-lucide="plus"></i> Adicionar regra</button>
+            <button type="button" class="btn-add-regra" data-tab="icms"><i data-lucide="plus"></i> Adicionar
+              regra</button>
           </div>
 
           <div id="sheetNatTabIpi" class="sheet-tab-content">
@@ -187,8 +286,10 @@
               </thead>
               <tbody id="regrasBodyIpi"></tbody>
             </table>
-            <label style="display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 0.9rem;"><input type="checkbox" id="natIncluirFreteBaseIpi" checked> Incluir frete na base do IPI</label>
-            <button type="button" class="btn-add-regra" data-tab="ipi"><i data-lucide="plus"></i> Adicionar regra</button>
+            <label style="display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 0.9rem;"><input
+                type="checkbox" id="natIncluirFreteBaseIpi" checked> Incluir frete na base do IPI</label>
+            <button type="button" class="btn-add-regra" data-tab="ipi"><i data-lucide="plus"></i> Adicionar
+              regra</button>
           </div>
 
           <div id="sheetNatTabPis" class="sheet-tab-content">
@@ -206,7 +307,8 @@
               </thead>
               <tbody id="regrasBodyPis"></tbody>
             </table>
-            <button type="button" class="btn-add-regra" data-tab="pis"><i data-lucide="plus"></i> Adicionar regra</button>
+            <button type="button" class="btn-add-regra" data-tab="pis"><i data-lucide="plus"></i> Adicionar
+              regra</button>
           </div>
 
           <div id="sheetNatTabCofins" class="sheet-tab-content">
@@ -224,7 +326,8 @@
               </thead>
               <tbody id="regrasBodyCofins"></tbody>
             </table>
-            <button type="button" class="btn-add-regra" data-tab="cofins"><i data-lucide="plus"></i> Adicionar regra</button>
+            <button type="button" class="btn-add-regra" data-tab="cofins"><i data-lucide="plus"></i> Adicionar
+              regra</button>
           </div>
 
           <div id="sheetNatTabIssqn" class="sheet-tab-content">
@@ -242,7 +345,8 @@
               </thead>
               <tbody id="regrasBodyIssqn"></tbody>
             </table>
-            <button type="button" class="btn-add-regra" data-tab="issqn"><i data-lucide="plus"></i> Adicionar regra</button>
+            <button type="button" class="btn-add-regra" data-tab="issqn"><i data-lucide="plus"></i> Adicionar
+              regra</button>
           </div>
 
           <div id="sheetNatTabOutros" class="sheet-tab-content">
@@ -255,7 +359,8 @@
                 </select>
               </div>
               <div class="form-group">
-                <label for="natSomarOutrasDespesas" class="label-with-info">Somar outras despesas <span class="info-icon" title="Incluir outras despesas na base de cálculo">&#8505;</span></label>
+                <label for="natSomarOutrasDespesas" class="label-with-info">Somar outras despesas <span
+                    class="info-icon" title="Incluir outras despesas na base de cálculo">&#8505;</span></label>
                 <select id="natSomarOutrasDespesas">
                   <option value="nao" selected>Não</option>
                   <option value="sim">Sim</option>
@@ -280,14 +385,16 @@
                 </select>
               </div>
               <div class="form-group">
-                <label for="natTipoPercAproxTrib" class="label-with-info">Tipo % Aprox. Trib. <span class="info-icon" title="Tipo de percentual aproximado de tributação">&#8505;</span></label>
+                <label for="natTipoPercAproxTrib" class="label-with-info">Tipo % Aprox. Trib. <span class="info-icon"
+                    title="Tipo de percentual aproximado de tributação">&#8505;</span></label>
                 <select id="natTipoPercAproxTrib">
                   <option value="aliquota_tabela" selected>Alíquota Tabela</option>
                   <option value="outro">Outro</option>
                 </select>
               </div>
               <div class="form-group">
-                <label for="natTipoDesconto" class="label-with-info">Tipo desconto <span class="info-icon" title="Condicional ou incondicional">&#8505;</span></label>
+                <label for="natTipoDesconto" class="label-with-info">Tipo desconto <span class="info-icon"
+                    title="Condicional ou incondicional">&#8505;</span></label>
                 <select id="natTipoDesconto">
                   <option value="condicional" selected>Condicional</option>
                   <option value="incondicional">Incondicional</option>
@@ -299,7 +406,9 @@
           <div id="sheetNatTabRetencoes" class="sheet-tab-content">
             <div class="form-grid-2">
               <div class="form-group">
-                <label for="natPossuiRetencaoCsrf" class="label-with-info">Possui retenção de CSRF <span class="info-icon" title="Contribuição para o Seguro de Riscos de Fenômenos da Natureza">&#8505;</span></label>
+                <label for="natPossuiRetencaoCsrf" class="label-with-info">Possui retenção de CSRF <span
+                    class="info-icon"
+                    title="Contribuição para o Seguro de Riscos de Fenômenos da Natureza">&#8505;</span></label>
                 <select id="natPossuiRetencaoCsrf">
                   <option value="nao" selected>Não</option>
                   <option value="sim">Sim</option>
@@ -338,7 +447,8 @@
               </thead>
               <tbody id="regrasBodyIs"></tbody>
             </table>
-            <button type="button" class="btn-add-regra" data-tab="is"><i data-lucide="plus"></i> Adicionar regra</button>
+            <button type="button" class="btn-add-regra" data-tab="is"><i data-lucide="plus"></i> Adicionar
+              regra</button>
           </div>
 
           <div id="sheetNatTabCbs" class="sheet-tab-content">
@@ -356,7 +466,8 @@
               </thead>
               <tbody id="regrasBodyCbs"></tbody>
             </table>
-            <button type="button" class="btn-add-regra" data-tab="cbs"><i data-lucide="plus"></i> Adicionar regra</button>
+            <button type="button" class="btn-add-regra" data-tab="cbs"><i data-lucide="plus"></i> Adicionar
+              regra</button>
           </div>
 
           <div id="sheetNatTabIbs" class="sheet-tab-content">
@@ -374,7 +485,8 @@
               </thead>
               <tbody id="regrasBodyIbs"></tbody>
             </table>
-            <button type="button" class="btn-add-regra" data-tab="ibs"><i data-lucide="plus"></i> Adicionar regra</button>
+            <button type="button" class="btn-add-regra" data-tab="ibs"><i data-lucide="plus"></i> Adicionar
+              regra</button>
           </div>
         </div>
       </div>
@@ -390,7 +502,8 @@
     <div class="modal-regra-panel" id="modalRegraPanel">
       <div class="modal-regra-header">
         <h3 id="modalRegraTitulo">Adicionar regra</h3>
-        <button type="button" class="modal-close" id="modalAdicionarRegraClose" aria-label="Fechar"><i data-lucide="x"></i></button>
+        <button type="button" class="modal-close" id="modalAdicionarRegraClose" aria-label="Fechar"><i
+            data-lucide="x"></i></button>
       </div>
       <div class="modal-regra-body" id="modalRegraBody">
         <!-- Conteúdo genérico (outras abas) -->
@@ -454,7 +567,8 @@
               <label for="modalIcmsCsosn">Código de situação da operação - Simples nacional (CSOSN)</label>
               <select id="modalIcmsCsosn">
                 <option value="02">02 - Tributação monofásica própria sobre combustíveis</option>
-                <option value="15">15 - Tributação monofásica própria e com responsabilidade pela retenção sobre combustíveis</option>
+                <option value="15">15 - Tributação monofásica própria e com responsabilidade pela retenção sobre
+                  combustíveis</option>
                 <option value="53">53 - Tributação monofásica sobre combustíveis com recolhimento diferido</option>
                 <option value="61">61 - Tributação monofásica sobre combustíveis cobrada anteriormente</option>
                 <option value="101">101 - Tributada com permissão de crédito</option>
@@ -462,7 +576,8 @@
                 <option value="103">103 - Isenção do ICMS para faixa de receita bruta</option>
                 <option value="201">201 - Tributada com permissão de crédito e com cobrança do ICMS por ST</option>
                 <option value="202">202 - Tributada sem permissão de crédito e com cobrança do ICMS por ST</option>
-                <option value="203">203 - Isenção do ICMS para faixa de receita bruta e com cobrança do ICMS por ST</option>
+                <option value="203">203 - Isenção do ICMS para faixa de receita bruta e com cobrança do ICMS por ST
+                </option>
                 <option value="300">300 - Imune</option>
                 <option value="400">400 - Não tributada</option>
                 <option value="500">500 - ICMS cobrado anteriormente por ST ou por antecipação</option>
@@ -486,7 +601,8 @@
                 <input type="number" id="modalIcmsPresumido" step="0.0001" value="0" placeholder="0,0000">
               </div>
               <div class="form-group modal-icms-regime-normal">
-                <label for="modalIcmsFcp" class="label-with-info">% FCP <span class="info-icon" title="Fundo de Combate à Pobreza">&#8505;</span></label>
+                <label for="modalIcmsFcp" class="label-with-info">% FCP <span class="info-icon"
+                    title="Fundo de Combate à Pobreza">&#8505;</span></label>
                 <input type="number" id="modalIcmsFcp" step="0.01" value="0" placeholder="0,00">
               </div>
               <div class="form-group modal-icms-regime-normal">
@@ -500,7 +616,8 @@
               </div>
             </div>
             <div class="form-group modal-icms-regime-normal">
-              <label for="modalIcmsCodBeneficio" class="label-with-info">Código do benefício fiscal na UF <a href="#" class="btn-link" id="modalIcmsConsultarBeneficio">Consultar</a></label>
+              <label for="modalIcmsCodBeneficio" class="label-with-info">Código do benefício fiscal na UF <a href="#"
+                  class="btn-link" id="modalIcmsConsultarBeneficio">Consultar</a></label>
               <input type="text" id="modalIcmsCodBeneficio" placeholder="">
             </div>
           </div>
@@ -531,10 +648,12 @@
                 </div>
                 <div class="form-group">
                   <label for="modalIcmsPartilhaAliqInterna">Alíquota Interna UF de destino (%)</label>
-                  <input type="number" id="modalIcmsPartilhaAliqInterna" step="0.01" min="0" value="0" placeholder="0,00">
+                  <input type="number" id="modalIcmsPartilhaAliqInterna" step="0.01" min="0" value="0"
+                    placeholder="0,00">
                 </div>
                 <div class="form-group">
-                  <label for="modalIcmsPartilhaFcp" class="label-with-info">Alíquota do FCP (%) <span class="info-icon" title="Fundo de Combate à Pobreza">&#8505;</span></label>
+                  <label for="modalIcmsPartilhaFcp" class="label-with-info">Alíquota do FCP (%) <span class="info-icon"
+                      title="Fundo de Combate à Pobreza">&#8505;</span></label>
                   <input type="number" id="modalIcmsPartilhaFcp" step="0.01" min="0" value="0" placeholder="0,00">
                 </div>
               </div>
@@ -785,4 +904,5 @@
 
   <script src="naturezas.js"></script>
 </body>
+
 </html>
