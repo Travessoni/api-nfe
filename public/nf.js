@@ -1665,10 +1665,17 @@ function initBindings() {
             if (docEl && li.dataset.doc) docEl.value = li.dataset.doc;
             hideList();
 
-            if (t.id) {
-              fetch(API + '/fiscal/contatos/' + t.id)
-                .then(function (r) { return r.json(); })
-                .then(function (contato) {
+            if (t.contato_id) {
+              Promise.all([
+                fetch(API + '/fiscal/contatos/' + t.contato_id).then(function (r) { return r.json(); }),
+                fetch(API + '/fiscal/contatos/' + t.contato_id + '/enderecos')
+                  .then(function (r) { return r.ok ? r.json() : []; })
+                  .catch(function () { return []; })
+              ])
+                .then(function (results) {
+                  var contato = results[0];
+                  var enderecos = results[1];
+
                   var formIe = document.getElementById('nf_transp_ie');
                   if (formIe && (contato.ie || contato.inscricao_estadual)) formIe.value = contato.ie || contato.inscricao_estadual;
 
@@ -1676,8 +1683,8 @@ function initBindings() {
                   var formMun = document.getElementById('nf_transp_municipio');
                   var formUf = document.getElementById('nf_transp_uf');
 
-                  if (contato.enderecos && contato.enderecos.length > 0) {
-                    var end = contato.enderecos[0];
+                  if (enderecos && enderecos.length > 0) {
+                    var end = enderecos.find(function (e) { return e.tipoEndereco === 'comercial'; }) || enderecos[0];
                     var str = end.rua || end.logradouro || '';
                     if (str && end.numero) str += ', ' + end.numero;
                     if (str && end.bairro) str += ' - ' + end.bairro;
@@ -1685,7 +1692,7 @@ function initBindings() {
 
                     if (formEnd && str) formEnd.value = str;
                     if (formMun && (end.cidade || end.municipio)) formMun.value = end.cidade || end.municipio;
-                    if (formUf && (end.uf || end.estado)) formUf.value = end.uf || end.estado;
+                    if (formUf && end.estado) formUf.value = end.estado;
                   } else {
                     if (formEnd) formEnd.value = 'Sem endereço cadastrado';
                   }
