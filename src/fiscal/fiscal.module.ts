@@ -25,7 +25,7 @@ import {
           return {
             connection: {
               host,
-              port: 6379,
+              port: 6380,
               username: 'default',
               password: redisPassword,
               tls: {},
@@ -61,4 +61,4 @@ import {
     FiscalEmissaoProcessor,
   ],
 })
-export class FiscalModule {}
+export class FiscalModule { }
