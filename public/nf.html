@@ -209,6 +209,7 @@
           <input type="hidden" id="nf_bairro_emitente" name="bairro_emitente">
           <input type="hidden" id="nf_logradouro_emitente" name="logradouro_emitente">
           <input type="hidden" id="nf_numero_emitente" name="numero_emitente">
+          <input type="hidden" id="nf_complemento_emitente" name="complemento_emitente">
           <input type="hidden" id="nf_telefone_emitente" name="telefone_emitente">
         </div>
 
@@ -225,7 +226,7 @@
                   aria-label="Adicionar cliente"><i data-lucide="plus"></i></button>
                 <ul class="cliente-contatos-list" id="nf_cliente_contatos_list"></ul>
               </div>
-              <input type="hidden" id="nf_nome_destinatario" name="nome_destinatario">
+              <input type="hidden" id="nf_nome_destinatario" name="nome_destinatario" class="limit-60" maxlength="60">
             </div>
 
             <div class="form-group">
@@ -271,7 +272,8 @@
             <div class="form-group">
               <label for="nf_nome_fantasia_destinatario">Nome Fantasia</label>
               <input type="text" id="nf_nome_fantasia_destinatario" name="nome_fantasia_destinatario"
-                placeholder="Nome Fantasia">
+                placeholder="Nome Fantasia" class="limit-60" maxlength="60">
+              <div class="char-counter"></div>
             </div>
           </div>
 
@@ -296,18 +298,24 @@
             </div>
             <div class="form-group">
               <label for="nf_municipio_destinatario">Município</label>
-              <input type="text" id="nf_municipio_destinatario" name="municipio_destinatario" placeholder="Cidade">
+              <input type="text" id="nf_municipio_destinatario" name="municipio_destinatario" placeholder="Cidade"
+                class="limit-60" maxlength="60">
+              <div class="char-counter"></div>
             </div>
             <div class="form-group">
               <label for="nf_bairro_destinatario">Bairro</label>
-              <input type="text" id="nf_bairro_destinatario" name="bairro_destinatario" placeholder="Bairro">
+              <input type="text" id="nf_bairro_destinatario" name="bairro_destinatario" placeholder="Bairro"
+                class="limit-60" maxlength="60">
+              <div class="char-counter"></div>
             </div>
           </div>
 
           <div class="form-grid-3" style="margin-top: 16px;">
             <div class="form-group">
               <label for="nf_logradouro_destinatario">Endereço</label>
-              <input type="text" id="nf_logradouro_destinatario" name="logradouro_destinatario" placeholder="Rua, Av.">
+              <input type="text" id="nf_logradouro_destinatario" name="logradouro_destinatario" placeholder="Rua, Av."
+                class="limit-60" maxlength="60">
+              <div class="char-counter"></div>
             </div>
             <div class="form-group">
               <label for="nf_numero_destinatario">Número</label>
@@ -327,7 +335,9 @@
             </div>
             <div class="form-group">
               <label for="nf_email_destinatario">E-mail</label>
-              <input type="email" id="nf_email_destinatario" name="email_destinatario" placeholder="email@exemplo.com">
+              <input type="email" id="nf_email_destinatario" name="email_destinatario" placeholder="email@exemplo.com"
+                class="limit-60" maxlength="60">
+              <div class="char-counter"></div>
             </div>
           </div>
         </div>
@@ -472,7 +482,7 @@
               <label for="nf_transporte">Transporte</label>
               <select id="nf_transporte">
                 <option value="nao">Não haverá transporte</option>
-                <option value="manual">Inserir transportadora manualmente</option>
+                <option value="manual" selected>Inserir transportadora manualmente</option>
               </select>
             </div>
             <div class="form-group">
@@ -492,9 +502,11 @@
             <div class="form-group">
               <label for="nf_transp_nome">Nome</label>
               <div class="nf-produto-ac-wrap">
-                <input type="text" id="nf_transp_nome" placeholder="Razão social" autocomplete="off">
+                <input type="text" id="nf_transp_nome" placeholder="Razão social" autocomplete="off" class="limit-60"
+                  maxlength="60">
                 <ul class="nf-produto-ac-list" id="nfTranspAcList"></ul>
               </div>
+              <div class="char-counter"></div>
             </div>
             <div class="form-group">
               <label for="nf_transp_cnpj_cpf">CNPJ/CPF</label>
@@ -505,50 +517,53 @@
               <input type="text" id="nf_transp_ie" placeholder="IE">
             </div>
 
-            <div class="form-group">
+            <div class="form-group" style="grid-column: 1 / -1;">
               <label for="nf_transp_endereco">Endereço da transportadora</label>
-              <input type="text" id="nf_transp_endereco" placeholder="Logradouro, número, bairro">
+              <input type="text" id="nf_transp_endereco" placeholder="Logradouro, número, bairro" class="limit-60"
+                maxlength="60">
+              <div class="char-counter"></div>
             </div>
             <div class="form-group">
               <label for="nf_transp_municipio">Município</label>
-              <input type="text" id="nf_transp_municipio" placeholder="Cidade">
+              <input type="text" id="nf_transp_municipio" placeholder="Cidade" class="limit-60" maxlength="60">
+              <div class="char-counter"></div>
             </div>
             <div class="form-group">
               <label for="nf_transp_uf">UF</label>
               <select id="nf_transp_uf">
                 <option value="">UF</option>
-                <option value="MG">MG</option>
-                <option value="SP">SP</option>
-                <option value="RJ">RJ</option>
-                <option value="PR">PR</option>
-                <option value="SC">SC</option>
-                <option value="RS">RS</option>
-                <option value="BA">BA</option>
-                <option value="CE">CE</option>
-                <option value="PE">PE</option>
-                <option value="GO">GO</option>
-                <option value="ES">ES</option>
-                <option value="DF">DF</option>
                 <option value="AC">AC</option>
                 <option value="AL">AL</option>
                 <option value="AM">AM</option>
                 <option value="AP">AP</option>
+                <option value="BA">BA</option>
+                <option value="CE">CE</option>
+                <option value="DF">DF</option>
+                <option value="ES">ES</option>
+                <option value="GO">GO</option>
                 <option value="MA">MA</option>
+                <option value="MG">MG</option>
                 <option value="MS">MS</option>
                 <option value="MT">MT</option>
                 <option value="PA">PA</option>
                 <option value="PB">PB</option>
+                <option value="PE">PE</option>
                 <option value="PI">PI</option>
+                <option value="PR">PR</option>
+                <option value="RJ">RJ</option>
                 <option value="RN">RN</option>
                 <option value="RO">RO</option>
                 <option value="RR">RR</option>
+                <option value="RS">RS</option>
+                <option value="SC">SC</option>
                 <option value="SE">SE</option>
+                <option value="SP">SP</option>
                 <option value="TO">TO</option>
               </select>
             </div>
           </div>
           <h5 class="form-section-subtitle">Dados do volume</h5>
-          <div class="form-grid-2">
+          <div class="form-grid-3">
             <div class="form-group">
               <label for="nf_volume_quantidade">Quantidade</label>
               <input type="number" id="nf_volume_quantidade" min="1" value="1" placeholder="1">
@@ -558,7 +573,44 @@
                   title="Em kg">&#8505;</span></label>
               <input type="number" id="nf_volume_peso_bruto" step="0.001" min="0" placeholder="0,000">
             </div>
+            <div class="form-group">
+              <label for="nf_volume_peso_liquido" class="label-with-info">Peso Líquido <span class="info-icon"
+                  title="Em kg">&#8505;</span></label>
+              <input type="number" id="nf_volume_peso_liquido" step="0.001" min="0" placeholder="0,000">
+            </div>
 
+          </div>
+        </div>
+        <div class="form-section">
+          <h4 class="form-section-title">Pagamento</h4>
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="nf_forma_pagamento">Forma de pagamento</label>
+              <select id="nf_forma_pagamento">
+                <option value="">Selecionar</option>
+                <option value="01">01 - Dinheiro</option>
+                <option value="02">02 - Cheque</option>
+                <option value="03">03 - Cartão de Crédito</option>
+                <option value="04">04 - Cartão de Débito</option>
+                <option value="05">05 - Crédito Loja</option>
+                <option value="10">10 - Vale Alimentação</option>
+                <option value="11">11 - Vale Refeição</option>
+                <option value="12">12 - Vale Presente</option>
+                <option value="13">13 - Vale Combustível</option>
+                <option value="14">14 - Duplicata Mercantil</option>
+                <option value="15">15 - Boleto Bancário</option>
+                <option value="16">16 - Depósito Bancário</option>
+                <option value="17">17 - Pagamento Instantâneo (PIX)</option>
+                <option value="18">18 - Transferência bancária, Carteira Digital</option>
+                <option value="19">19 - Programa de fidelidade, Cashback, Crédito Virtual</option>
+                <option value="90">90 - Sem pagamento</option>
+                <option value="99">99 - Outros</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="nf_valor_pagamento">Valor do pagamento (R$)</label>
+              <input type="number" id="nf_valor_pagamento" step="0.01" min="0" placeholder="0,00">
+            </div>
           </div>
         </div>
         <!-- Seções Pagamento, Categoria e Intermediador removidas a pedido do usuário -->
@@ -598,7 +650,9 @@
               <div class="form-grid-2">
                 <div class="form-group" style="grid-column: 1 / -1;">
                   <label for="cliente_nome_fantasia">Nome fantasia</label>
-                  <input type="text" id="cliente_nome_fantasia" name="nome_fantasia" placeholder="Nome fantasia">
+                  <input type="text" id="cliente_nome_fantasia" name="nome_fantasia" placeholder="Nome fantasia"
+                    class="limit-60" maxlength="60">
+                  <div class="char-counter"></div>
                 </div>
                 <div class="form-group">
                   <label for="cliente_tipo_pessoa">Tipo da pessoa</label>
@@ -617,7 +671,9 @@
                 </div>
                 <div class="form-group" style="grid-column: 1 / -1;">
                   <label for="cliente_razao_social">Razão social</label>
-                  <input type="text" id="cliente_razao_social" name="razao_social" placeholder="Razão social">
+                  <input type="text" id="cliente_razao_social" name="razao_social" placeholder="Razão social"
+                    class="limit-60" maxlength="60">
+                  <div class="char-counter"></div>
                 </div>
                 <div class="form-group">
                   <label for="cliente_tipo_contribuinte">Tipo de contribuinte</label>
@@ -634,7 +690,9 @@
                 </div>
                 <div class="form-group" style="grid-column: 1 / -1;">
                   <label for="cliente_email">Email</label>
-                  <input type="email" id="cliente_email" name="email" placeholder="email@exemplo.com">
+                  <input type="email" id="cliente_email" name="email" placeholder="email@exemplo.com" class="limit-60"
+                    maxlength="60">
+                  <div class="char-counter"></div>
                 </div>
                 <div class="form-group">
                   <label for="cliente_telefone_celular">Telefone celular</label>
@@ -716,7 +774,8 @@
                 </div>
                 <div class="form-group" style="grid-column: 1 / -1;">
                   <label for="cliente_end_rua">Rua</label>
-                  <input type="text" id="cliente_end_rua" name="rua" placeholder="Rua">
+                  <input type="text" id="cliente_end_rua" name="rua" placeholder="Rua" class="limit-60" maxlength="60">
+                  <div class="char-counter"></div>
                 </div>
                 <div class="form-group">
                   <label for="cliente_end_numero">Número</label>
@@ -728,11 +787,15 @@
                 </div>
                 <div class="form-group" style="grid-column: 1 / -1;">
                   <label for="cliente_end_bairro">Bairro</label>
-                  <input type="text" id="cliente_end_bairro" name="bairro" placeholder="Bairro">
+                  <input type="text" id="cliente_end_bairro" name="bairro" placeholder="Bairro" class="limit-60"
+                    maxlength="60">
+                  <div class="char-counter"></div>
                 </div>
                 <div class="form-group">
                   <label for="cliente_end_cidade">Cidade</label>
-                  <input type="text" id="cliente_end_cidade" name="cidade" placeholder="Cidade">
+                  <input type="text" id="cliente_end_cidade" name="cidade" placeholder="Cidade" class="limit-60"
+                    maxlength="60">
+                  <div class="char-counter"></div>
                 </div>
                 <div class="form-group">
                   <label for="cliente_end_uf">UF</label>

@@ -14,9 +14,41 @@ import {
   RegraCBSRow,
   extrairCstDeSituacaoTributaria,
 } from '../services/pedido-data.service';
-import { FocusNFePayload, FocusNFeItemPayload, CST_COM_ICMS_TRIBUTADO, CSOSN_COM_DIFAL } from './focus-nfe.types';
+import { FocusNFePayload, FocusNFeItemPayload, FocusNFeFormaPagamentoPayload, CST_COM_ICMS_TRIBUTADO, CSOSN_COM_DIFAL } from './focus-nfe.types';
 import { RegraTributariaNaoEncontradaError } from '../types/fiscal.types';
 import { getAliquotaInterestadualCONFAZ, getAliquotaInternaPorUF } from './difal-aliquotas';
+
+/** Campos DIFAL (ICMSUFDest) que devem ser removidos para Simples Nacional (CRT=1). LC 123/2006, LC 190/2022. */
+const DIFAL_FIELD_NAMES = [
+  'icms_base_calculo_uf_destino',
+  'icms_aliquota_interna_uf_destino',
+  'icms_aliquota_interestadual',
+  'icms_percentual_partilha',
+  'fcp_percentual_uf_destino',
+  'fcp_valor_uf_destino',
+  'fcp_base_calculo_uf_destino',
+  'icms_valor_uf_remetente',
+  'icms_valor_uf_destino',
+] as const;
+
+/** Remove todos os campos DIFAL de um item (garante que nunca são enviados para CRT=1). */
+function stripDifalFields(item: Record<string, unknown>): void {
+  for (const field of DIFAL_FIELD_NAMES) {
+    delete item[field];
+  }
+}
+
+/** Calcula valor_aproximado_tributos (Lei 12.741/2012) somando ICMS + PIS + COFINS + IPI de todos os itens. */
+function calcularValorAproximadoTributos(items: Record<string, unknown>[]): number {
+  let total = 0;
+  for (const it of items) {
+    total += Number(it.icms_valor ?? 0);
+    total += Number(it.pis_valor ?? 0);
+    total += Number(it.cofins_valor ?? 0);
+    total += Number(it.ipi_valor ?? 0);
+  }
+  return Math.round(total * 100) / 100;
+}
 
 /** Valida campo obrigatório e lança erro descritivo se ausente. */
 function validarCampoObrigatorio(valor: string | undefined | null, campo: string, entidade: string): void {
@@ -344,7 +376,9 @@ export function normalizePayloadIcms(
   const consumidorFinal = String(payload.consumidor_final ?? '1').trim();
   const ufEmitente = String(payload.uf_emitente ?? '').trim().toUpperCase();
   const ufDestinatario = String(payload.uf_destinatario ?? '').trim().toUpperCase();
-  const precisaDifal = localDestino === 2 && consumidorFinal === '1' && ufDestinatario.length === 2;
+  const regimeFromPayload = String(payload.regime_tributario_emitente ?? '').trim();
+  // Simples Nacional (CRT=1) NUNCA tem DIFAL — LC 123/2006, LC 190/2022
+  const precisaDifal = localDestino === 2 && consumidorFinal === '1' && ufDestinatario.length === 2 && regimeFromPayload !== '1';
 
   const itemsAfterCfop = (normalized.items ?? items) as Record<string, unknown>[];
 
@@ -368,18 +402,30 @@ export function normalizePayloadIcms(
       Object.assign(it, icms);
     }
 
-    // DIFAL (separado do ICMS próprio)
+    // DIFAL (separado do ICMS próprio) — nunca para Simples Nacional
     if (precisaDifal) {
       const difal = calcularDifal({
         valorBruto: bc, cst, ufEmitente, ufDestinatario, temRegimeEspecial,
       });
       if (difal) Object.assign(it, difal);
+    } else if (regimeFromPayload === '1') {
+      // Garantir remoção de campos DIFAL que possam ter vindo no payload
+      stripDifalFields(it);
     }
 
     return it;
   });
 
   normalized.items = normalizePayloadCstParaSimplesNacional(normalized, normalizedItems);
+
+  // valor_aproximado_tributos (Lei 12.741/2012) — sempre obrigatório.
+  // Se o recálculo resultar em 0 (ex: CSOSN 102 sem tributação efetiva), preservar o valor
+  // que já existe no payload (calculado via IBPT pelo frontend ou pelo buildFocusNFePayload).
+  const finalItems = normalized.items as Record<string, unknown>[];
+  const recalculado = calcularValorAproximadoTributos(finalItems);
+  const jaExistente = Number(payload.valor_aproximado_tributos ?? 0);
+  normalized.valor_aproximado_tributos = recalculado > 0 ? recalculado : (jaExistente > 0 ? jaExistente : 0);
+
   return normalized;
 }
 
@@ -421,7 +467,9 @@ export function enrichItemsWithDifalFromRegra(
   const consumidorFinal = String(payload.consumidor_final ?? '1').trim();
   const ufEmitente = String(payload.uf_emitente ?? '').trim().toUpperCase();
   const ufDestinatario = String(payload.uf_destinatario ?? '').trim().toUpperCase();
-  if (localDestino !== 2 || consumidorFinal !== '1' || ufDestinatario.length !== 2) {
+  // Simples Nacional (CRT=1) NUNCA tem DIFAL — LC 123/2006, LC 190/2022
+  const regimeFromPayload = String(payload.regime_tributario_emitente ?? '').trim();
+  if (localDestino !== 2 || consumidorFinal !== '1' || ufDestinatario.length !== 2 || regimeFromPayload === '1') {
     return payload;
   }
 
@@ -465,6 +513,19 @@ export function enrichItemsWithDifalFromRegra(
   result.items = normalizedItems;
   if (payload.itens != null) result.itens = normalizedItems;
   return result;
+}
+
+/**
+ * Helper to truncate string fields to 60 characters and log a warning if truncated.
+ * This is required to avoid SEFAZ schema rejection (MaxLength = 60).
+ */
+function truncate60(value: string | undefined | null, fieldName: string): string {
+  const str = String(value ?? '').trim();
+  if (str.length > 60) {
+    console.warn(`[FocusNFe Payload] Campo '${fieldName}' excedeu limite de 60 caracteres (${str.length}). Sendo truncado: "${str}"`);
+    return str.slice(0, 60);
+  }
+  return str;
 }
 
 /**
@@ -533,7 +594,16 @@ export function buildFocusNFePayload(
     cli.consumidorFinal === false || cli.consumidorFinal === 'false' || nat.consumidorFinal === false || nat.consumidorFinal === 'false';
   // Default: contribuinte ICMS (indIEDest=1) -> não é consumidor final; CPF ou não contribuinte -> consumidor final
   const consumidorFinal = hasConsumidorFinal ? '1' : hasNaoConsumidorFinal ? '0' : (indicadorIeDest === 1 ? '0' : '1');
-  const precisaDifal = localDestino === 2 && consumidorFinal === '1';
+
+  // Regime tributário é propriedade EXCLUSIVA da empresa (precisa antes do precisaDifal)
+  const emp = empresa as Record<string, unknown>;
+  const regimeStr = emp.codRegime_tributario != null ? String(emp.codRegime_tributario).trim() : '';
+  if (!regimeStr) {
+    throw new Error(`Empresa ${cnpjEmitente}: regime tributário (codRegime_tributario) não configurado. Cadastre 1 (Simples Nacional), 2 (Simples Excesso) ou 3 (Regime Normal).`);
+  }
+
+  // Simples Nacional (CRT=1) NUNCA tem DIFAL — LC 123/2006, LC 190/2022
+  const precisaDifal = localDestino === 2 && consumidorFinal === '1' && regimeStr !== '1';
 
   const naturezaId = Number(naturezaOperacao.id ?? 0);
   const regraICMS = regras?.icms ?? null;
@@ -554,13 +624,6 @@ export function buildFocusNFePayload(
   const presumido = (presumidoNum != null && presumidoNum > 0) ? presumidoNum : null;
   if (presumidoNum != null && presumidoNum < 0) {
     throw new Error('Regra ICMS com regime presumido inválido. O campo presumido não pode ser negativo.');
-  }
-
-  // Regime tributário é propriedade EXCLUSIVA da empresa
-  const emp = empresa as Record<string, unknown>;
-  const regimeStr = emp.codRegime_tributario != null ? String(emp.codRegime_tributario).trim() : '';
-  if (!regimeStr) {
-    throw new Error(`Empresa ${cnpjEmitente}: regime tributário (codRegime_tributario) não configurado. Cadastre 1 (Simples Nacional), 2 (Simples Excesso) ou 3 (Regime Normal).`);
   }
 
   /** indTot = 1: frete compõe a base de cálculo de ICMS, PIS e COFINS (BC = vProd + vFrete). indTot = 0: BC = vProd. */
@@ -652,7 +715,7 @@ export function buildFocusNFePayload(
       ...(ipiCodEnquadramento != null && { ipi_codigo_enquadramento_legal: ipiCodEnquadramento }),
     };
 
-    // ── DIFAL: base = vProd + vFrete quando indTot = 1 ──
+    // ── DIFAL: base = vProd + vFrete quando indTot = 1 (nunca para Simples Nacional) ──
     if (precisaDifal) {
       const temRegimeEspecial = !!emp.tem_regime_especial;
       const difal = calcularDifal({
@@ -711,7 +774,7 @@ export function buildFocusNFePayload(
     infoAdicionaisRaw != null && String(infoAdicionaisRaw).trim() !== '' ? String(infoAdicionaisRaw).trim() : '';
 
   // Ambiente vem como parâmetro (testabilidade, multi-tenant); fallback para env
-  const ambienteEfetivo = ambiente ?? process.env.FOCUS_NFE_AMBIENTE ?? 'producao';
+  const ambienteEfetivo = ambiente ?? process.env.FOCUS_NFE_AMBIENTE ?? 'homologacao';
   const nomeDestinatario = String(cliente.nome ?? (cliente as Record<string, unknown>).razao_social ?? (cliente as Record<string, unknown>).nome_fantasia ?? '').trim() || 'Destinatário';
 
   const payload: FocusNFePayload = {
@@ -726,17 +789,18 @@ export function buildFocusNFePayload(
     ...(regimeStr && { regime_tributario_emitente: regimeStr }),
     presenca_comprador: presencaComprador,
     cnpj_emitente: cnpjEmitente,
-    nome_emitente: String(empresa.nome ?? ''),
-    nome_fantasia_emitente: empresa.nomeFantasia ? String(empresa.nomeFantasia) : undefined,
-    logradouro_emitente: String(empresa.logradouro ?? ''),
+    nome_emitente: truncate60(empresa.nome, 'nome_emitente'),
+    nome_fantasia_emitente: empresa.nomeFantasia ? truncate60(empresa.nomeFantasia, 'nome_fantasia_emitente') : undefined,
+    logradouro_emitente: truncate60(empresa.logradouro, 'logradouro_emitente'),
     numero_emitente: String(empresa.numero ?? 'S/N'),
-    bairro_emitente: String(empresa.bairro ?? ''),
-    municipio_emitente: String(empresa.municipio ?? ''),
+    ...(String((empresa as Record<string, unknown>).complemento ?? '').trim() ? { complemento_emitente: String((empresa as Record<string, unknown>).complemento).trim() } : {}),
+    bairro_emitente: truncate60(empresa.bairro, 'bairro_emitente'),
+    municipio_emitente: truncate60(empresa.municipio, 'municipio_emitente'),
     uf_emitente: String(empresa.uf ?? 'MG'),
     cep_emitente: cepEmitente,
     inscricao_estadual_emitente: ieEmitente,
-    telefone_emitente: (empresa as Record<string, unknown>).telefone as string | undefined,
-    nome_destinatario: nomeDestinatario,
+    ...((empresa as Record<string, unknown>).telefone != null && String((empresa as Record<string, unknown>).telefone).trim() !== '' ? { telefone_emitente: onlyNumbers(String((empresa as Record<string, unknown>).telefone)) } : {}),
+    nome_destinatario: truncate60(nomeDestinatario, 'nome_destinatario'),
     ...(indicadorIeDest === 1 && {
       inscricao_estadual_destinatario: ieDest === '' ? 'ISENTO' : cliente.ie ?? 'ISENTO',
     }),
@@ -746,16 +810,16 @@ export function buildFocusNFePayload(
     ...(indicadorIeDest === 9 && dest.cnpj && ieDest && ieDest.toUpperCase() !== 'ISENTO' && {
       inscricao_estadual_destinatario: ieDest,
     }),
-    logradouro_destinatario: String(cliente.logradouro ?? ''),
+    logradouro_destinatario: truncate60(cliente.logradouro, 'logradouro_destinatario'),
     numero_destinatario: String(cliente.numero ?? 'S/N'),
     ...(String(cliente.complemento ?? '').trim() ? { complemento_destinatario: String(cliente.complemento).trim() } : {}),
-    bairro_destinatario: String(cliente.bairro ?? ''),
-    municipio_destinatario: String(cliente.municipio ?? ''),
+    bairro_destinatario: truncate60(cliente.bairro, 'bairro_destinatario'),
+    municipio_destinatario: truncate60(cliente.municipio, 'municipio_destinatario'),
     uf_destinatario: ufDestinatario,
     pais_destinatario: cliente.pais ?? 'Brasil',
     cep_destinatario: cepDestinatario,
-    ...(cliente.email != null && { email_destinatario: String(cliente.email).trim() }),
-    ...(cliente.nomeFantasia != null && { nome_fantasia_destinatario: String(cliente.nomeFantasia).trim() }),
+    ...(cliente.email != null && { email_destinatario: truncate60(String(cliente.email), 'email_destinatario') }),
+    ...(cliente.nomeFantasia != null && { nome_fantasia_destinatario: truncate60(String(cliente.nomeFantasia), 'nome_fantasia_destinatario') }),
     valor_frete: Math.round(valorFrete * 100) / 100,
     valor_seguro: 0,
     valor_total: Math.round(valorTotal * 100) / 100,
@@ -780,12 +844,12 @@ export function buildFocusNFePayload(
 
     ...(pedido.transporte_modalidade != null && { modalidade_frete: String(pedido.transporte_modalidade) }),
     ...(String(pedido.transporte_modalidade ?? '') !== '9' && {
-      ...(pedido.transporte_nome != null && { nome_transportador: String(pedido.transporte_nome) }),
+      ...(pedido.transporte_nome != null && { nome_transportador: truncate60(String(pedido.transporte_nome), 'nome_transportador') }),
       ...(pedido.transporte_cnpj != null && String(pedido.transporte_cnpj).length === 14 && { cnpj_transportador: String(pedido.transporte_cnpj) }),
       ...(pedido.transporte_cnpj != null && String(pedido.transporte_cnpj).length === 11 && { cpf_transportador: String(pedido.transporte_cnpj) }),
       ...(pedido.transporte_ie != null && { inscricao_estadual_transportador: String(pedido.transporte_ie) }),
-      ...(pedido.transporte_endereco != null && { endereco_transportador: String(pedido.transporte_endereco) }),
-      ...(pedido.transporte_municipio != null && { municipio_transportador: String(pedido.transporte_municipio) }),
+      ...(pedido.transporte_endereco != null && { endereco_transportador: truncate60(String(pedido.transporte_endereco), 'endereco_transportador') }),
+      ...(pedido.transporte_municipio != null && { municipio_transportador: truncate60(String(pedido.transporte_municipio), 'municipio_transportador') }),
       ...(pedido.transporte_uf != null && { uf_transportador: String(pedido.transporte_uf) }),
     }),
 
@@ -800,11 +864,32 @@ export function buildFocusNFePayload(
       }]
     }),
 
+    formas_pagamento: [{
+      forma_pagamento: '01',
+      valor_pagamento: Math.round(valorTotal * 100) / 100,
+    }] as FocusNFeFormaPagamentoPayload[],
+
+    // valor_aproximado_tributos (Lei 12.741/2012) — OBRIGATÓRIO. Nunca omitir.
+    // Para Simples Nacional com CSOSN 400/102: tributos efetivos = 0,
+    // mas o campo deve ser enviado para a FocusNFE gerar o infCpl via IBPT.
+    valor_aproximado_tributos: calcularValorAproximadoTributos(
+      itensPayload as unknown as Record<string, unknown>[],
+    ),
+
     items: itensPayload,
   };
 
   if (valorDesconto > 0) payload.valor_desconto = Math.round(valorDesconto * 100) / 100;
   if (telefoneDest !== '') payload.telefone_destinatario = telefoneDest;
+
+  // Validação de segurança: garante que valor_aproximado_tributos nunca saia undefined do payload.
+  // O TypeScript já o torna required, mas esta guarda em runtime protege contra refatorações futuras.
+  if (payload.valor_aproximado_tributos === undefined || payload.valor_aproximado_tributos === null) {
+    throw new Error(
+      'valor_aproximado_tributos não foi calculado. Verifique os itens do pedido. ' +
+      'Este campo é obrigatório pela Lei 12.741/2012 e pela API FocusNFE.',
+    );
+  }
 
   if (dest.cnpj) payload.cnpj_destinatario = dest.cnpj;
   else if (dest.cpf) payload.cpf_destinatario = dest.cpf;

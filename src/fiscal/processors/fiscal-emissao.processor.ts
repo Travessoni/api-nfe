@@ -75,7 +75,29 @@ export class FiscalEmissaoProcessor extends WorkerHost {
         const localDestino = Number(payload.local_destino ?? 0);
         const consumidorFinal = String(payload.consumidor_final ?? '1').trim();
         const ufDestinatario = String(payload.uf_destinatario ?? '').trim().toUpperCase();
-        const precisaDifal = localDestino === 2 && consumidorFinal === '1' && ufDestinatario.length === 2;
+
+        // Resolver regimeStr da empresa (precisa antes do DIFAL e normalizePayloadIcms)
+        const empRecord = empresaData as Record<string, unknown> | null;
+        const regimeStr = empRecord?.codRegime_tributario != null ? String(empRecord.codRegime_tributario).trim() : '';
+
+        // Simples Nacional (CRT=1) NUNCA tem DIFAL — LC 123/2006, LC 190/2022
+        const precisaDifal = localDestino === 2 && consumidorFinal === '1' && ufDestinatario.length === 2 && regimeStr !== '1';
+
+        // Se Simples Nacional, remover campos DIFAL que possam existir nos itens
+        if (regimeStr === '1') {
+          const payloadItems = (payload.items ?? payload.itens) as Record<string, unknown>[] | undefined;
+          if (Array.isArray(payloadItems)) {
+            const difalFields = [
+              'icms_base_calculo_uf_destino', 'icms_aliquota_interna_uf_destino',
+              'icms_aliquota_interestadual', 'icms_percentual_partilha',
+              'fcp_percentual_uf_destino', 'fcp_valor_uf_destino',
+              'fcp_base_calculo_uf_destino', 'icms_valor_uf_remetente', 'icms_valor_uf_destino',
+            ];
+            for (const item of payloadItems) {
+              for (const f of difalFields) delete item[f];
+            }
+          }
+        }
 
         if (precisaDifal) {
           const naturezaId = Number(job.data.natureza_operacao_id ?? 0);
@@ -109,10 +131,6 @@ export class FiscalEmissaoProcessor extends WorkerHost {
             return { ok: false, error: msg };
           }
         }
-
-        // Resolver regimeStr da empresa e presumido da regra ICMS para normalizePayloadIcms
-        const empRecord = empresaData as Record<string, unknown> | null;
-        const regimeStr = empRecord?.codRegime_tributario != null ? String(empRecord.codRegime_tributario).trim() : '';
 
         // Buscar regra ICMS para o campo presumido (mesmo quando não tem DIFAL)
         let presumido: number | null = null;
@@ -318,8 +336,8 @@ export class FiscalEmissaoProcessor extends WorkerHost {
         typeof valorTotalRaw === 'number'
           ? valorTotalRaw
           : valorTotalRaw != null && !Number.isNaN(Number(valorTotalRaw))
-          ? Number(valorTotalRaw)
-          : null;
+            ? Number(valorTotalRaw)
+            : null;
       if (valorNota != null && !Number.isNaN(valorNota)) {
         await this.supabase.updateInvoiceStatus(invoiceId, {
           status: 'PENDENTE',

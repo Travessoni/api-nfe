@@ -312,6 +312,7 @@ function updateModalCalcTotais(forceUpdate) {
   setNum('nf_valor_funrural', 0);
   setNum('nf_total_faturado', totalNota);
   setNum('nf_total_tributos', totalTributos);
+  setNum('nf_valor_pagamento', totalNota);
   // Atualiza texto de informações adicionais:
   // - parte inicial: texto livre (infoAdicionais / edição do usuário)
   // - parte final: bloco IBPT \"Total aproximado de tributos...\"
@@ -358,6 +359,47 @@ function renumberItems() {
     var first = tr.querySelector('td.col-num');
     if (first) first.textContent = i + 1;
   });
+}
+
+/**
+ * Busca o CFOP correto da regra ICMS da natureza de operação para a UF do destinatário.
+ * Atualiza tr.dataset.cfop com o valor encontrado (ex: 5108, 6108).
+ */
+function fetchAndApplyCfop(tr) {
+  var natSel = document.getElementById('naturezaId');
+  var natId = natSel ? parseInt(natSel.value || '0', 10) : 0;
+  if (!natId || natId < 1) return;
+  var ufDest = ((document.getElementById('nf_uf_destinatario') || {}).value || '').trim().toUpperCase();
+  if (!ufDest || ufDest.length !== 2) return;
+  fetch(API + '/fiscal/naturezas/' + natId)
+    .then(function (r) { return r.json(); })
+    .then(function (nat) {
+      if (!nat || nat.message || !nat.regras || !nat.regras.icms) return;
+      var regras = Array.isArray(nat.regras.icms) ? nat.regras.icms : [];
+      if (!regras.length) return;
+      // Prioridade 1: regra com destinos contendo a UF
+      var matched = null;
+      for (var i = 0; i < regras.length; i++) {
+        var destinos = String(regras[i].destinos || regras[i].Destinos || '').trim();
+        if (!destinos) continue;
+        var partes = destinos.split(/[,\s]+/).map(function (p) { return p.trim().toUpperCase(); }).filter(Boolean);
+        if (partes.indexOf(ufDest) >= 0) { matched = regras[i]; break; }
+        if (partes.indexOf('QUALQUER') >= 0 && !matched) { matched = regras[i]; }
+      }
+      if (!matched) {
+        // Fallback: regra com destinos = 'qualquer'
+        for (var j = 0; j < regras.length; j++) {
+          var d = String(regras[j].destinos || regras[j].Destinos || '').trim().toLowerCase();
+          if (d === 'qualquer') { matched = regras[j]; break; }
+        }
+      }
+      if (matched && matched.cfop) {
+        var ufEmit = ((document.getElementById('nf_uf_emitente') || {}).value || '').trim().toUpperCase();
+        var isInterestadual = ufEmit.length === 2 && ufDest.length === 2 && ufEmit !== ufDest;
+        tr.dataset.cfop = cfopPorDestino(String(matched.cfop).trim(), isInterestadual);
+      }
+    })
+    .catch(function () { });
 }
 
 function addItemRow(item, num) {
@@ -432,6 +474,8 @@ function addItemRow(item, num) {
               if (trib.tipo != null && trib.tipo !== '') tr.dataset.tipo = String(trib.tipo);
               if (trib.pis_aliquota_porcentual != null && trib.pis_aliquota_porcentual !== '') tr.dataset.pisAliquotaPorcentual = String(trib.pis_aliquota_porcentual);
               if (trib.cofins_aliquota_porcentual != null && trib.cofins_aliquota_porcentual !== '') tr.dataset.cofinsAliquotaPorcentual = String(trib.cofins_aliquota_porcentual);
+              // Após tributação, buscar CFOP da natureza
+              fetchAndApplyCfop(tr);
             })
             .catch(function () { });
         }
@@ -471,6 +515,8 @@ function addItemRow(item, num) {
   tr.querySelector('.btn-edit-item').addEventListener('click', function () { openSheetItemNF(tr); });
   if (typeof lucide !== 'undefined') lucide.createIcons();
   updateModalCalcTotais();
+  // Se o item não tem CFOP definido (item novo), buscar da natureza
+  if (!item.cfop) fetchAndApplyCfop(tr);
 }
 
 // ---------------------- Sheet item ----------------------
@@ -707,7 +753,8 @@ function getPayloadFromForm() {
     uf_emitente: get('nf_uf_emitente') || 'MG',
     cep_emitente: onlyNumbers(get('nf_cep_emitente')).padStart(8, '0').slice(0, 8) || '00000000',
     inscricao_estadual_emitente: get('nf_inscricao_estadual_emitente'),
-    telefone_emitente: get('nf_telefone_emitente') || undefined,
+    complemento_emitente: get('nf_complemento_emitente') || undefined,
+    telefone_emitente: onlyNumbers(get('nf_telefone_emitente')) || undefined,
     nome_destinatario: get('nf_nome_destinatario'),
     nome_fantasia_destinatario: get('nf_nome_fantasia_destinatario') || undefined,
     inscricao_estadual_destinatario: get('nf_inscricao_estadual_destinatario') || 'ISENTO',
@@ -786,7 +833,7 @@ function getPayloadFromForm() {
     item.unidade_tributavel = item.unidade_comercial || 'UN';
     item.quantidade_tributavel = item.quantidade_comercial;
     item.valor_bruto = Math.round((item.quantidade_comercial || 0) * (item.valor_unitario_comercial || 0) * 100) / 100;
-    item.cfop = tr.dataset.cfop || item.cfop || '5102';
+    item.cfop = cfopPorDestino(tr.dataset.cfop || item.cfop || '5102', isInterestadual);
     payload.items.push(item);
   });
 
@@ -815,9 +862,25 @@ function getPayloadFromForm() {
 
   // Volume Data
   var volQtde = parseInt(get('nf_volume_quantidade'), 10);
-  if (!isNaN(volQtde) && volQtde > 0) payload.quantidade_volumes = volQtde;
   var volPesoB = parseFloat(get('nf_volume_peso_bruto'));
-  if (!isNaN(volPesoB) && volPesoB > 0) payload.peso_bruto_volumes = volPesoB;
+  var volPesoL = parseFloat(get('nf_volume_peso_liquido'));
+  var hasVolume = (!isNaN(volQtde) && volQtde > 0) || (!isNaN(volPesoB) && volPesoB > 0) || (!isNaN(volPesoL) && volPesoL >= 0);
+  if (hasVolume) {
+    var vol = {};
+    if (!isNaN(volQtde) && volQtde > 0) vol.quantidade = volQtde;
+    vol.peso_bruto = !isNaN(volPesoB) ? volPesoB : 0;
+    vol.peso_liquido = !isNaN(volPesoL) ? volPesoL : 0;
+    payload.volumes = [vol];
+  }
+
+  // Formas de Pagamento
+  var formaPag = get('nf_forma_pagamento') || '';
+  var valorPag = parseFloat(get('nf_valor_pagamento'));
+  if (isNaN(valorPag)) valorPag = payload.valor_total || 0;
+  payload.formas_pagamento = [{
+    forma_pagamento: formaPag,
+    valor_pagamento: Math.round(valorPag * 100) / 100
+  }];
 
   return payload;
 }
@@ -1035,6 +1098,7 @@ function fillFormFromPayload(p) {
   set('nf_inscricao_estadual_emitente', p.inscricao_estadual_emitente);
   set('nf_logradouro_emitente', p.logradouro_emitente);
   set('nf_numero_emitente', p.numero_emitente);
+  set('nf_complemento_emitente', p.complemento_emitente);
   set('nf_bairro_emitente', p.bairro_emitente);
   set('nf_municipio_emitente', p.municipio_emitente);
   set('nf_uf_emitente', p.uf_emitente);
@@ -1100,14 +1164,39 @@ function fillFormFromPayload(p) {
     }
   }
 
-  set('nf_volume_quantidade', p.quantidade_volumes != null ? p.quantidade_volumes : '');
-  set('nf_volume_peso_bruto', p.peso_bruto_volumes != null ? p.peso_bruto_volumes : '');
+  // Volume data: support both old flat format and new volumes array
+  if (Array.isArray(p.volumes) && p.volumes.length > 0) {
+    var vol0 = p.volumes[0];
+    set('nf_volume_quantidade', vol0.quantidade != null ? vol0.quantidade : '');
+    set('nf_volume_peso_bruto', vol0.peso_bruto != null ? vol0.peso_bruto : '');
+    set('nf_volume_peso_liquido', vol0.peso_liquido != null ? vol0.peso_liquido : '');
+  } else {
+    set('nf_volume_quantidade', p.quantidade_volumes != null ? p.quantidade_volumes : '');
+    set('nf_volume_peso_bruto', p.peso_bruto_volumes != null ? p.peso_bruto_volumes : '');
+    set('nf_volume_peso_liquido', '');
+  }
+
+  // Formas de pagamento
+  if (Array.isArray(p.formas_pagamento) && p.formas_pagamento.length > 0) {
+    var pag0 = p.formas_pagamento[0];
+    setSel('nf_forma_pagamento', pag0.forma_pagamento || '');
+    set('nf_valor_pagamento', pag0.valor_pagamento != null ? pag0.valor_pagamento : '');
+  } else {
+    setSel('nf_forma_pagamento', '');
+    set('nf_valor_pagamento', p.valor_total || '');
+  }
+
   var infoContrib = (p.informacoes_adicionais_contribuinte != null ? String(p.informacoes_adicionais_contribuinte) : '').trim();
   set('nf_info_complementares', infoContrib);
   var tbody = document.getElementById('nfItemsBody');
   if (tbody) tbody.innerHTML = '';
   (p.items || p.itens || []).forEach(function (item, idx) { addItemRow(item, idx + 1); });
   updateModalCalcTotais();
+
+  // Preserva valor do payload somente em modo edição (valor > 0)
+  if (p.valor_aproximado_tributos != null && p.valor_aproximado_tributos > 0) {
+    setNum('nf_total_tributos', p.valor_aproximado_tributos);
+  }
   nfEnderecosList = buildNfEnderecosFromForm();
   renderNfDestinatarioEnderecos();
   updateLocalDestinoFromUFs();
@@ -1447,6 +1536,21 @@ async function emitFromForm() {
     );
     return;
   }
+  var limitExceeded = [];
+  document.querySelectorAll('.limit-60').forEach(function (el) {
+    if (el.value.length > 60) {
+      var name = el.getAttribute('placeholder') || el.name || el.id;
+      limitExceeded.push(name);
+    }
+  });
+  if (limitExceeded.length > 0) {
+    showModalAlertaContribuinte(
+      'Os seguintes campos excederam o limite máximo de 60 caracteres exigido pela SEFAZ:<br><br>' +
+      limitExceeded.map(function (n) { return '- ' + n; }).join('<br>') +
+      '<br><br>Por favor, abrevie-os antes de emitir.'
+    );
+    return;
+  }
   var btn = document.getElementById('btnEmitirNF');
   setFormMessage('');
   if (btn) { btn.disabled = true; btn.textContent = 'Salvando…'; }
@@ -1489,7 +1593,51 @@ function applyCalcAutoInputsState() {
   });
 }
 
+function initCharCounters() {
+  document.querySelectorAll('.limit-60').forEach(function (inp) {
+    var wrapper = inp.parentElement;
+    if (wrapper.classList.contains('input-with-icon') || wrapper.classList.contains('nf-produto-ac-wrap')) {
+      wrapper = wrapper.parentElement;
+    }
+    var counter = wrapper ? wrapper.querySelector('.char-counter') : null;
+    if (!counter) return;
+
+    function updateCounter() {
+      var len = inp.value ? inp.value.length : 0;
+      counter.textContent = len + '/60';
+      if (len > 60) {
+        counter.style.color = '#ef4444';
+        inp.classList.add('is-max');
+      } else if (len === 60) {
+        counter.style.color = '#eab308';
+        inp.classList.add('is-max');
+      } else {
+        counter.style.color = '#a1a1aa';
+        inp.classList.remove('is-max');
+      }
+    }
+
+    inp.addEventListener('input', updateCounter);
+    inp.addEventListener('change', updateCounter);
+
+    // Override the value setter for programmatic changes
+    var origDesc = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+    if (origDesc && origDesc.set) {
+      Object.defineProperty(inp, 'value', {
+        get: origDesc.get,
+        set: function (val) {
+          origDesc.set.call(this, val);
+          updateCounter();
+        }
+      });
+    }
+
+    updateCounter();
+  });
+}
+
 function initBindings() {
+  initCharCounters();
   var backBtn = document.getElementById('btnVoltarPainel');
   if (backBtn) backBtn.addEventListener('click', function () { window.location.href = window.location.origin + '/painel/'; });
 
@@ -1654,16 +1802,11 @@ function initBindings() {
             if (docEl && li.dataset.doc) docEl.value = li.dataset.doc;
             hideList();
 
-            if (t.contato_id) {
-              Promise.all([
-                fetch(API + '/fiscal/contatos/' + t.contato_id).then(function (r) { return r.json(); }),
-                fetch(API + '/fiscal/contatos/' + t.contato_id + '/enderecos')
-                  .then(function (r) { return r.ok ? r.json() : []; })
-                  .catch(function () { return []; })
-              ])
-                .then(function (results) {
-                  var contato = results[0];
-                  var enderecos = results[1];
+            if (t.id) {
+              fetch(API + '/fiscal/contatos/' + t.id)
+                .then(function (r) { return r.json(); })
+                .then(function (contato) {
+                  if (!contato) return;
 
                   var formIe = document.getElementById('nf_transp_ie');
                   if (formIe && (contato.ie || contato.inscricao_estadual)) formIe.value = contato.ie || contato.inscricao_estadual;
@@ -1672,18 +1815,26 @@ function initBindings() {
                   var formMun = document.getElementById('nf_transp_municipio');
                   var formUf = document.getElementById('nf_transp_uf');
 
-                  if (enderecos && enderecos.length > 0) {
-                    var end = enderecos.find(function (e) { return e.tipoEndereco === 'comercial'; }) || enderecos[0];
+                  var enderecos = Array.isArray(contato.enderecos) ? contato.enderecos : [];
+                  if (enderecos.length > 0) {
+                    var end = enderecos.find(function (e) { return e.tipo === 'comercial' || e.tipoEndereco === 'comercial'; }) || enderecos[0];
                     var str = end.rua || end.logradouro || '';
-                    if (str && end.numero) str += ', ' + end.numero;
-                    if (str && end.bairro) str += ' - ' + end.bairro;
-                    if (str && end.cep) str += ' - CEP: ' + end.cep;
+                    if (str && end.numero) str += ', nº ' + end.numero;
+                    if (str && end.bairro) str += ', ' + end.bairro;
 
                     if (formEnd && str) formEnd.value = str;
                     if (formMun && (end.cidade || end.municipio)) formMun.value = end.cidade || end.municipio;
-                    if (formUf && end.estado) formUf.value = end.estado;
+                    if (formUf && (end.estado || end.uf)) formUf.value = end.estado || end.uf;
                   } else {
-                    if (formEnd) formEnd.value = 'Sem endereço cadastrado';
+                    // Fallback: try fields directly on contato (from getCliente)
+                    if (formEnd && contato.logradouro) {
+                      var addrStr = contato.logradouro;
+                      if (contato.numero) addrStr += ', nº ' + contato.numero;
+                      if (contato.bairro) addrStr += ', ' + contato.bairro;
+                      formEnd.value = addrStr;
+                    }
+                    if (formMun && contato.municipio) formMun.value = contato.municipio;
+                    if (formUf && contato.uf) formUf.value = contato.uf;
                   }
                 })
                 .catch(function (e) { console.error('Erro ao buscar detalhes da transportadora', e); });

@@ -82,6 +82,7 @@ export interface FocusNFePayload {
   nome_fantasia_emitente?: string;
   logradouro_emitente: string;
   numero_emitente: string;
+  complemento_emitente?: string;
   bairro_emitente: string;
   municipio_emitente: string;
   uf_emitente: string;
@@ -111,6 +112,8 @@ export interface FocusNFePayload {
   valor_total: number;
   valor_produtos: number;
   valor_desconto?: number;
+  /** Lei 12.741/2012 — obrigatório. Nunca omitir no payload (exceto se for 0, enviar 0). */
+  valor_aproximado_tributos: number;
   modalidade_frete?: string;
   /** 1 = mesma UF, 2 = UF diferente, 3 = exterior. Obrigatório. */
   local_destino: 1 | 2 | 3;
@@ -149,6 +152,8 @@ export interface FocusNFePayload {
 
   volumes?: FocusNFeVolumePayload[];
 
+  formas_pagamento?: FocusNFeFormaPagamentoPayload[];
+
   items: FocusNFeItemPayload[];
 }
 
@@ -159,4 +164,9 @@ export interface FocusNFeVolumePayload {
   numeracao?: string;
   peso_bruto?: number;
   peso_liquido?: number;
+}
+
+export interface FocusNFeFormaPagamentoPayload {
+  forma_pagamento: string;
+  valor_pagamento: number;
 }
