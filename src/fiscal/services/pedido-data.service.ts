@@ -565,6 +565,7 @@ export class PedidoDataService {
       estado: e.estado,
       cep: e.cep,
       complemento: e.complemento,
+      tipoEndereco: (e as EnderecoRow & { tipoEndereco?: string }).tipoEndereco,
       tipo: (e as EnderecoRow & { tipo?: string }).tipo,
     }));
     row.pais = row.pais ?? 'Brasil';
@@ -663,7 +664,6 @@ export class PedidoDataService {
    */
   async searchTransportadoras(busca: string): Promise<{ id: number; nome: string; nome_fantasia?: string; razao_social?: string; cpf_cnpj?: string }[]> {
     const q = (busca || '').trim();
-    if (q.length < 2) return [];
     const escaped = q.replace(/'/g, "''");
     const pattern = `%${escaped}%`;
     const client = this.getClient();
@@ -687,6 +687,17 @@ export class PedidoDataService {
       });
     };
     try {
+      if (!q) {
+        const { data: allData, error: allError } = await client
+          .from('contatos')
+          .select('*')
+          .eq('tipo_cadastro', 'transportadora')
+          .limit(200);
+        if (!allError && allData?.length) add(allData);
+        return out.slice(0, 200);
+      }
+      if (q.length < 2) return [];
+
       // 1) Buscar por nome
       let { data, error } = await client
         .from('contatos')

@@ -1531,8 +1531,23 @@ textarea:focus {
   color: #fafafa;
 }
 
+.nf-endereco-card .nf-endereco-card-title {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #D7A404;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+
 .nf-endereco-card .nf-endereco-card-line:empty {
   display: none;
+}
+
+.nf-endereco-hint {
+  margin: 0 0 10px 0;
+  font-size: 12px;
+  color: #a1a1aa;
 }
 
 .nf-endereco-add-btn {

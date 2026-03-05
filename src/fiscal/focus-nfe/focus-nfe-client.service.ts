@@ -25,10 +25,7 @@ export class FocusNFeTemporaryError extends Error {
   }
 }
 
-export type FocusNFeAmbiente = 'homologacao' | 'producao';
-
 const BASE_URL = {
-  homologacao: 'https://homologacao.focusnfe.com.br',
   producao: 'https://api.focusnfe.com.br',
 };
 
@@ -39,7 +36,7 @@ function normalizarCnpj(cnpj: string): string {
   return (cnpj || '').replace(/\D/g, '');
 }
 
-/** Tokens da empresa vindos do banco (tokenHomologacao / tokenProducao). */
+/** Tokens da empresa vindos do banco (produção). */
 export interface FocusNFeTokensFromDb {
   homologacao?: string;
   producao?: string;
@@ -81,17 +78,15 @@ export class FocusNFeClientService {
   /**
    * Retorna o token Focus NFe para a emissão/consulta.
    * Prioridade:
-   *  1) tokensFromDb (tokenHomologacao / tokenProducao da tabela empresas)
+   *  1) tokensFromDb.producao (token de produção da tabela empresas)
    *  2) FOCUS_NFE_TOKEN do .env (fallback global — NÃO recomendado em multi-empresa)
    *
    * Cada empresa DEVE ter seu próprio token cadastrado no banco.
    */
   getToken(cnpjEmitente?: string, tokensFromDb?: FocusNFeTokensFromDb | null): string {
-    const ambiente = this.getAmbiente();
-
     // 1) Token da empresa no banco — fonte primária
     if (tokensFromDb) {
-      const tokenDb = ambiente === 'producao' ? tokensFromDb.producao : tokensFromDb.homologacao;
+      const tokenDb = tokensFromDb.producao;
       if (tokenDb != null && String(tokenDb).trim() !== '') {
         return String(tokenDb).trim();
       }
@@ -105,21 +100,14 @@ export class FocusNFeClientService {
 
     // Nenhum token encontrado — erro descritivo
     const cnpjDisplay = cnpjEmitente ? normalizarCnpj(cnpjEmitente) : '(não informado)';
-    const campoToken = ambiente === 'producao' ? 'tokenProducao' : 'tokenHomologacao';
     throw new Error(
       `Token Focus NFe não encontrado para a empresa CNPJ ${cnpjDisplay}. ` +
-      `Cadastre o campo "${campoToken}" na tabela empresas ou configure FOCUS_NFE_TOKEN no .env.`,
+      'Cadastre o campo "tokenProducao" na tabela empresas ou configure FOCUS_NFE_TOKEN no .env.',
     );
   }
 
-  private getAmbiente(): FocusNFeAmbiente {
-    /* DEFAULT PARA HOMOLOGAÇÃO conforme solicitado pelo usuário. */
-    const env = this.config.get<string>('FOCUS_NFE_AMBIENTE');
-    return env === 'producao' ? 'producao' : 'homologacao';
-  }
-
   private getBaseUrl(): string {
-    return BASE_URL[this.getAmbiente()];
+    return BASE_URL.producao;
   }
 
   /**
@@ -202,7 +190,7 @@ export class FocusNFeClientService {
   /**
    * Envia NFe para processamento.
    * POST /v2/nfe?ref=REFERENCIA
-   * @param tokensFromDb Tokens da empresa no banco (tokenHomologacao/tokenProducao). Quando presentes, têm prioridade.
+   * @param tokensFromDb Token de produção da empresa no banco. Quando presente, tem prioridade.
    */
   async emitir(
     referencia: string,

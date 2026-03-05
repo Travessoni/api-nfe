@@ -25,6 +25,10 @@ export class FiscalSyncService implements OnModuleInit, OnModuleDestroy {
       this.logger.log('Sincronização automática desativada (FISCAL_SYNC_DISABLED)');
       return;
     }
+    if (this.intervalId) {
+      clearInterval(this.intervalId);
+      this.intervalId = null;
+    }
     this.intervalId = setInterval(() => this.syncProcessando(), INTERVAL_MS);
     this.logger.log(
       `Sincronização de notas em PROCESSANDO a cada ${INTERVAL_MS / 60000} min (notas com mais de ${MINUTOS_PROCESSANDO_PARA_SINCRONIZAR} min)`,
@@ -42,14 +46,20 @@ export class FiscalSyncService implements OnModuleInit, OnModuleDestroy {
    * Consulta na Focus NFe as notas que estão em PROCESSANDO há mais de X minutos
    * e atualiza o status no banco (fallback quando o webhook não chega).
    */
-  async syncProcessando(): Promise<{ ok: number; erro: number; atualizados: number }> {
+  async syncProcessando(): Promise<{
+    ok: number;
+    erro: number;
+    atualizados: number;
+    erros_detalhes: Array<{ ref: string; invoice_id: string; mensagem: string }>;
+  }> {
     let ok = 0;
     let erro = 0;
     let atualizados = 0;
+    const errosDetalhes: Array<{ ref: string; invoice_id: string; mensagem: string }> = [];
 
     try {
       const list = await this.supabase.listInvoicesProcessandoOlderThan(MINUTOS_PROCESSANDO_PARA_SINCRONIZAR);
-      if (list.length === 0) return { ok: 0, erro: 0, atualizados: 0 };
+      if (list.length === 0) return { ok: 0, erro: 0, atualizados: 0, erros_detalhes: [] };
 
       this.logger.debug(`Sincronizando ${list.length} nota(s) em PROCESSANDO`);
 
@@ -98,8 +108,24 @@ export class FiscalSyncService implements OnModuleInit, OnModuleDestroy {
           atualizados++;
           this.logger.log(`Invoice ${invoice.id} (ref=${focusId}) atualizado para ${statusNorm} via sync`);
         } catch (e) {
-          erro++;
           const msg = e instanceof Error ? e.message : String(e);
+          const msgNorm = msg.toLowerCase();
+          const isNotFound = msgNorm.includes('focus nfe 404') || msgNorm.includes('nota fiscal não encontrada');
+
+          if (isNotFound) {
+            await this.supabase.updateInvoiceStatus(invoice.id, {
+              status: 'ERRO',
+              error_message:
+                `Focus NFe 404 para ref=${focusId}. ` +
+                'A referência não existe no token/conta de produção atual ou a nota nunca foi enviada para essa conta.',
+            });
+            atualizados++;
+            this.logger.warn(`Sync ref=${focusId}: 404 tratado como ERRO definitivo`);
+            continue;
+          }
+
+          erro++;
+          errosDetalhes.push({ ref: focusId, invoice_id: invoice.id, mensagem: msg });
           this.logger.warn(`Sync ref=${focusId}: ${msg}`);
         }
       }
@@ -112,7 +138,7 @@ export class FiscalSyncService implements OnModuleInit, OnModuleDestroy {
       this.logger.error(`Sync processando: ${msg}`);
     }
 
-    return { ok, erro, atualizados };
+    return { ok, erro, atualizados, erros_detalhes: errosDetalhes };
   }
 
   private normalizarStatus(status: string | undefined): 'AUTORIZADO' | 'REJEITADO' | 'CANCELADO' | 'ERRO' | 'PROCESSANDO' {

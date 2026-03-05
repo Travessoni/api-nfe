@@ -38,8 +38,12 @@ function stripDifalFields(item: Record<string, unknown>): void {
   }
 }
 
-/** Calcula valor_aproximado_tributos (Lei 12.741/2012) somando ICMS + PIS + COFINS + IPI de todos os itens. */
-function calcularValorAproximadoTributos(items: Record<string, unknown>[]): number {
+/** Percentual IBPT médio usado como fallback para a Lei 12.741/2012 quando não há tributação efetiva nos itens (ex: Simples Nacional CSOSN 102/400). */
+const IBPT_PERC_FALLBACK = 0.1525; // 15,25%
+
+/** Calcula valor_aproximado_tributos (Lei 12.741/2012) somando ICMS + PIS + COFINS + IPI de todos os itens.
+ *  Se a soma resultar em 0 (ex: Simples Nacional sem tributação efetiva), utiliza IBPT_PERC_FALLBACK sobre valorTotal. */
+function calcularValorAproximadoTributos(items: Record<string, unknown>[], valorTotal?: number): number {
   let total = 0;
   for (const it of items) {
     total += Number(it.icms_valor ?? 0);
@@ -47,7 +51,54 @@ function calcularValorAproximadoTributos(items: Record<string, unknown>[]): numb
     total += Number(it.cofins_valor ?? 0);
     total += Number(it.ipi_valor ?? 0);
   }
-  return Math.round(total * 100) / 100;
+  total = Math.round(total * 100) / 100;
+  // Fallback IBPT: quando os itens não possuem tributação efetiva (CSOSN 102/400/etc.),
+  // a lei exige que um valor aproximado ainda seja informado. Usa % IBPT sobre o valor total.
+  if (total === 0 && valorTotal && valorTotal > 0) {
+    total = Math.round(valorTotal * IBPT_PERC_FALLBACK * 100) / 100;
+  }
+  return total;
+}
+
+/**
+ * Distribui o valor_total_tributos do header proporcionalmente entre os itens,
+ * preenchendo item.valor_total_tributos em cada um.
+ * A Focus NFe valida que sum(item.valor_total_tributos) === header.valor_total_tributos.
+ * O último item absorve o resíduo de arredondamento.
+ */
+function distribuirTributosEntreItens(
+  items: Record<string, unknown>[],
+  valorTotalTributos: number,
+): Record<string, unknown>[] {
+  if (!items.length || valorTotalTributos <= 0) {
+    // Quando header = 0, zerar campo nos itens para manter consistência
+    return items.map((it) => ({ ...it, valor_total_tributos: 0 }));
+  }
+  const totalProdutos = items.reduce((s, it) => s + Number(it.valor_bruto ?? 0), 0);
+  if (totalProdutos <= 0) {
+    // Distribuição igualitária quando não há base de rateio
+    const porcao = Math.round((valorTotalTributos / items.length) * 100) / 100;
+    return items.map((it, i) => ({
+      ...it,
+      valor_total_tributos:
+        i === items.length - 1
+          ? Math.round((valorTotalTributos - porcao * (items.length - 1)) * 100) / 100
+          : porcao,
+    }));
+  }
+  let somaDistribuida = 0;
+  const result = items.map((it, i) => {
+    let tribItem: number;
+    if (i === items.length - 1) {
+      // Último item recebe o resíduo exato para garantir soma perfeita
+      tribItem = Math.round((valorTotalTributos - somaDistribuida) * 100) / 100;
+    } else {
+      tribItem = Math.round((Number(it.valor_bruto ?? 0) / totalProdutos) * valorTotalTributos * 100) / 100;
+      somaDistribuida += tribItem;
+    }
+    return { ...it, valor_total_tributos: tribItem };
+  });
+  return result;
 }
 
 /** Valida campo obrigatório e lança erro descritivo se ausente. */
@@ -418,13 +469,31 @@ export function normalizePayloadIcms(
 
   normalized.items = normalizePayloadCstParaSimplesNacional(normalized, normalizedItems);
 
-  // valor_aproximado_tributos (Lei 12.741/2012) — sempre obrigatório.
+  // valor_total_tributos (Lei 12.741/2012) — sempre obrigatório. Gera <vTotTrib> no XML / DANFE.
+  // Nome exato da API Focus NFe. Aceita também valor_aproximado_tributos do frontend (campo legado).
   // Se o recálculo resultar em 0 (ex: CSOSN 102 sem tributação efetiva), preservar o valor
-  // que já existe no payload (calculado via IBPT pelo frontend ou pelo buildFocusNFePayload).
+  // que já existe no payload. Último fallback: IBPT_PERC_FALLBACK % sobre valor_total.
   const finalItems = normalized.items as Record<string, unknown>[];
-  const recalculado = calcularValorAproximadoTributos(finalItems);
-  const jaExistente = Number(payload.valor_aproximado_tributos ?? 0);
-  normalized.valor_aproximado_tributos = recalculado > 0 ? recalculado : (jaExistente > 0 ? jaExistente : 0);
+  const valorTotalBase = Number((normalized as Record<string, unknown>).valor_total ?? (normalized as Record<string, unknown>).valor_produtos ?? 0);
+  const recalculado = calcularValorAproximadoTributos(finalItems, valorTotalBase);
+  // Aceita valor_total_tributos (campo correto) ou valor_aproximado_tributos (legado do frontend)
+  const jaExistente = Number(
+    (payload as Record<string, unknown>).valor_total_tributos ??
+    (payload as Record<string, unknown>).valor_aproximado_tributos ??
+    0,
+  );
+  const headerTributos = recalculado > 0 ? recalculado : (jaExistente > 0 ? jaExistente : Math.round(valorTotalBase * IBPT_PERC_FALLBACK * 100) / 100);
+  normalized.valor_total_tributos = headerTributos;
+  // Remover campo legado para não enviar campo desconhecido à API Focus NFe
+  delete (normalized as Record<string, unknown>).valor_aproximado_tributos;
+
+  // Distribuir valor_total_tributos proporcionalmente entre os itens.
+  // A Focus NFe valida que sum(item.valor_total_tributos) === header.valor_total_tributos.
+  // Também remove o campo legado valor_aproximado_tributos dos itens (caso venha do payload salvo).
+  normalized.items = distribuirTributosEntreItens(
+    normalized.items as Record<string, unknown>[],
+    headerTributos,
+  ).map((it) => { delete (it as Record<string, unknown>).valor_aproximado_tributos; return it; });
 
   return normalized;
 }
@@ -526,6 +595,18 @@ function truncate60(value: string | undefined | null, fieldName: string): string
     return str.slice(0, 60);
   }
   return str;
+}
+
+/**
+ * Sanitiza o texto de informações adicionais do contribuinte para envio à Focus NFe.
+ * Remove quebras de linha (\r, \n), colapsa múltiplos espaços e faz trim.
+ */
+function sanitizeAdditionalInfo(value: unknown): string {
+  if (value == null) return '';
+  const str = String(value).trim();
+  if (str === '') return '';
+  const withoutNewlines = str.replace(/[\r\n]+/g, ' ');
+  return withoutNewlines.replace(/\s+/g, ' ').trim();
 }
 
 /**
@@ -770,8 +851,7 @@ export function buildFocusNFePayload(
   const telefoneDest = (cliente.celular ?? cliente.telefoneFixo ?? '').trim();
 
   const infoAdicionaisRaw = nat.infoAdicionais ?? nat.info_adicionais;
-  const informacoesAdicionaisContribuinte =
-    infoAdicionaisRaw != null && String(infoAdicionaisRaw).trim() !== '' ? String(infoAdicionaisRaw).trim() : '';
+  const informacoesAdicionaisContribuinte = sanitizeAdditionalInfo(infoAdicionaisRaw);
 
   // Ambiente vem como parâmetro (testabilidade, multi-tenant); fallback para env
   const ambienteEfetivo = ambiente ?? process.env.FOCUS_NFE_AMBIENTE ?? 'homologacao';
@@ -869,11 +949,13 @@ export function buildFocusNFePayload(
       valor_pagamento: Math.round(valorTotal * 100) / 100,
     }] as FocusNFeFormaPagamentoPayload[],
 
-    // valor_aproximado_tributos (Lei 12.741/2012) — OBRIGATÓRIO. Nunca omitir.
-    // Para Simples Nacional com CSOSN 400/102: tributos efetivos = 0,
+    // valor_total_tributos (Lei 12.741/2012) — OBRIGATÓRIO. Gera <vTotTrib> no XML / DANFE.
+    // Nome exato da API Focus NFe. Para Simples Nacional com CSOSN 400/102: tributos efetivos = 0,
     // mas o campo deve ser enviado para a FocusNFE gerar o infCpl via IBPT.
-    valor_aproximado_tributos: calcularValorAproximadoTributos(
+    // Fallback: se a soma dos impostos for 0, usa IBPT_PERC_FALLBACK % sobre valor_total.
+    valor_total_tributos: calcularValorAproximadoTributos(
       itensPayload as unknown as Record<string, unknown>[],
+      Math.round(valorTotal * 100) / 100,
     ),
 
     items: itensPayload,
@@ -882,14 +964,21 @@ export function buildFocusNFePayload(
   if (valorDesconto > 0) payload.valor_desconto = Math.round(valorDesconto * 100) / 100;
   if (telefoneDest !== '') payload.telefone_destinatario = telefoneDest;
 
-  // Validação de segurança: garante que valor_aproximado_tributos nunca saia undefined do payload.
+  // Validação de segurança: garante que valor_total_tributos nunca saia undefined do payload.
   // O TypeScript já o torna required, mas esta guarda em runtime protege contra refatorações futuras.
-  if (payload.valor_aproximado_tributos === undefined || payload.valor_aproximado_tributos === null) {
+  if (payload.valor_total_tributos === undefined || payload.valor_total_tributos === null) {
     throw new Error(
-      'valor_aproximado_tributos não foi calculado. Verifique os itens do pedido. ' +
-      'Este campo é obrigatório pela Lei 12.741/2012 e pela API FocusNFE.',
+      'valor_total_tributos não foi calculado. Verifique os itens do pedido. ' +
+      'Este campo é obrigatório pela Lei 12.741/2012 e pela API FocusNFE (gera <vTotTrib> no XML).',
     );
   }
+
+  // Distribuir valor_total_tributos proporcionalmente entre os itens.
+  // A Focus NFe valida que sum(item.valor_total_tributos) === header.valor_total_tributos.
+  payload.items = distribuirTributosEntreItens(
+    payload.items as unknown as Record<string, unknown>[],
+    payload.valor_total_tributos,
+  ) as unknown as typeof payload.items;
 
   if (dest.cnpj) payload.cnpj_destinatario = dest.cnpj;
   else if (dest.cpf) payload.cpf_destinatario = dest.cpf;

@@ -630,6 +630,7 @@ var PedidoDataService = function () {
                                 estado: e.estado,
                                 cep: e.cep,
                                 complemento: e.complemento,
+                                tipoEndereco: e.tipoEndereco,
                                 tipo: e.tipo,
                             }); });
                             row.pais = (_h = row.pais) !== null && _h !== void 0 ? _h : 'Brasil';

@@ -1,9 +1,9 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
-import { Queue } from 'bullmq';
+import { Queue, Job } from 'bullmq';
 import { FiscalSupabaseService } from './fiscal-supabase.service';
 import { PedidoDataService } from './pedido-data.service';
-import { FISCAL_QUEUE_NAME, EmissaoJobPayload } from '../processors/fiscal-emissao.processor';
+import { FISCAL_QUEUE_NAME, EmissaoJobPayload, FiscalEmissaoProcessor } from '../processors/fiscal-emissao.processor';
 
 const SERIE_DEFAULT = '1';
 
@@ -13,6 +13,7 @@ export class FiscalEmissaoService {
     private readonly supabase: FiscalSupabaseService,
     private readonly pedidoData: PedidoDataService,
     @InjectQueue(FISCAL_QUEUE_NAME) private readonly queue: Queue,
+    private readonly processor: FiscalEmissaoProcessor,
   ) { }
 
   /**
@@ -192,32 +193,30 @@ export class FiscalEmissaoService {
     if (invoice.status !== 'PENDENTE' && invoice.status !== 'ERRO') {
       throw new BadRequestException('Apenas notas PENDENTE ou ERRO podem ser enviadas manualmente.');
     }
+    if (!invoice.focus_id || String(invoice.focus_id).trim() === '') {
+      throw new BadRequestException('Nota sem focus_id; não é possível reenviar.');
+    }
 
-    await this.supabase.updateInvoiceStatus(invoiceId, { status: 'PROCESSANDO' });
+    const jobData: EmissaoJobPayload = {
+      invoiceId: invoice.id,
+      pedidoId: invoice.pedido_id,
+      referencia: invoice.focus_id,
+      empresa_id: invoice.empresa_id,
+      natureza_operacao_id: invoice.natureza_operacao_id,
+      payload: invoice.payload_json ?? undefined,
+    };
 
-    await this.queue.add(
-      'emitir',
-      {
-        invoiceId: invoice.id,
-        pedidoId: invoice.pedido_id,
-        referencia: invoice.focus_id,
-        empresa_id: invoice.empresa_id,
-        natureza_operacao_id: invoice.natureza_operacao_id,
-        payload: invoice.payload_json,
-      } as EmissaoJobPayload,
-      {
-        jobId: String(invoice.id) + Date.now().toString(), // garante novo job na fila caso já exista 
-        attempts: 3,
-        backoff: { type: 'exponential', delay: 5000 },
-        removeOnComplete: { count: 1000 },
-      },
-    );
+    const result = await this.processor.process({ data: jobData } as Job<EmissaoJobPayload>);
+
+    if (!result.ok) {
+      throw new BadRequestException(result.error ?? 'Erro ao enviar NF-e');
+    }
 
     return {
       invoiceId: invoice.id,
       status: 'PROCESSANDO',
       focus_id: invoice.focus_id,
-      mensagem: 'NF-e PENDENTE enviada para processamento. Aguarde o webhook ou consulte o status.',
+      mensagem: 'NF-e enviada para a Focus NFe. Aguarde o webhook ou consulte o status.',
     };
   }
 }

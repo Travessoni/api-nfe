@@ -361,6 +361,40 @@ function renumberItems() {
   });
 }
 
+function applyTribunaItem() {
+  updateModalCalcTotais();
+  var totalNota = parseFloat((document.getElementById('nf_valor_total') || {}).value) || 0;
+  if (totalNota <= 0) {
+    totalNota = parseFloat((document.getElementById('nf_total_nota') || {}).value) || 0;
+  }
+  if (totalNota <= 0) {
+    setFormMessage('Não foi possível aplicar TRIBUNA: o total da nota deve ser maior que zero.', 'error');
+    return;
+  }
+
+  var tbody = document.getElementById('nfItemsBody');
+  if (!tbody) return;
+  var firstNcmInput = tbody.querySelector('tr input[data-field="codigo_ncm"]');
+  var ncmAtual = firstNcmInput ? String(firstNcmInput.value || '').replace(/\D/g, '').slice(0, 8) : '';
+  var valorTribuna = Math.round(totalNota * 0.1 * 100) / 100;
+
+  tbody.innerHTML = '';
+  addItemRow({
+    descricao: 'TRIBUNA',
+    codigo_produto: 'TRIBUNA',
+    codigo_ncm: ncmAtual || '39205100',
+    unidade_comercial: 'UN',
+    quantidade_comercial: 1,
+    valor_unitario_comercial: valorTribuna,
+  }, 1);
+  setFormMessage(
+    'Item TRIBUNA aplicado. Valor definido em 10% do total da nota (R$ ' +
+    valorTribuna.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) +
+    ').',
+    'success',
+  );
+}
+
 /**
  * Busca o CFOP correto da regra ICMS da natureza de operação para a UF do destinatário.
  * Atualiza tr.dataset.cfop com o valor encontrado (ex: 5108, 6108).
@@ -918,6 +952,23 @@ function addressHasData(addr) {
   return !!(addr && (addr.rua || addr.cep || addr.bairro || addr.cidade || addr.uf));
 }
 
+function normalizeEnderecoTipoLabel(rawTipo) {
+  var t = String(rawTipo || '').trim();
+  if (!t) return 'ENDERECO';
+  var lower = t.toLowerCase();
+  var map = {
+    comercial: 'COMERCIAL',
+    residencial: 'RESIDENCIAL',
+    entrega: 'ENTREGA',
+    nota_fiscal: 'NOTA FISCAL',
+    notafiscal: 'NOTA FISCAL',
+    principal: 'PRINCIPAL',
+    endereco: 'ENDERECO',
+  };
+  if (map[lower]) return map[lower];
+  return t.replace(/[_-]+/g, ' ').toUpperCase();
+}
+
 function buildNfEnderecosFromContact(contato) {
   if (!contato || typeof contato !== 'object') return [];
   var list = [];
@@ -927,8 +978,9 @@ function buildNfEnderecosFromContact(contato) {
       var rua = e.rua || e.logradouro || '';
       var cep = (e.cep != null ? String(e.cep).replace(/\D/g, '') : '') || '';
       if (!rua && !e.bairro && !cep) return;
+      var rawTipo = e.tipoEndereco || e.tipo || 'Endereço';
       list.push({
-        tipo: e.tipo || 'Endereço',
+        tipo: rawTipo,
         rua: rua,
         numero: e.numero || '',
         bairro: e.bairro || '',
@@ -997,10 +1049,15 @@ function formatEnderecoCardLine(addr) {
 function renderNfDestinatarioEnderecos() {
   var container = document.getElementById('nfDestinatarioEnderecosCards');
   var addBtn = document.getElementById('nfDestinatarioEnderecoAddBtn');
+  var hint = document.getElementById('nfDestinatarioEnderecosHint');
   if (!container) return;
   container.innerHTML = '';
   container.style.display = 'none';
   if (addBtn) addBtn.style.display = 'none';
+  if (hint) {
+    hint.textContent = '';
+    hint.style.display = 'none';
+  }
 
   if (nfEnderecosList.length === 0) {
     if (addBtn) addBtn.style.display = 'inline-flex';
@@ -1011,8 +1068,17 @@ function renderNfDestinatarioEnderecos() {
   if (nfEnderecosList.length === 1) {
     selectedNfEnderecoIndex = 0;
     fillAddressInForm(nfEnderecosList[0]);
+    if (hint) {
+      hint.textContent = 'Contato possui 1 endereço.';
+      hint.style.display = 'block';
+    }
     if (typeof lucide !== 'undefined') lucide.createIcons();
     return;
+  }
+
+  if (hint) {
+    hint.textContent = 'Contato possui ' + nfEnderecosList.length + ' endereços.';
+    hint.style.display = 'block';
   }
 
   container.style.display = 'grid';
@@ -1025,6 +1091,10 @@ function renderNfDestinatarioEnderecos() {
     card.setAttribute('role', 'button');
     card.setAttribute('tabindex', '0');
     card.setAttribute('data-index', String(idx));
+    var title = document.createElement('div');
+    title.className = 'nf-endereco-card-title';
+    title.textContent = addr.tipo || addr.tipoEndereco || 'Endereço';
+    card.appendChild(title);
     var lines = formatEnderecoCardLine(addr);
     lines.forEach(function (line) {
       var div = document.createElement('div');
@@ -1361,6 +1431,70 @@ async function loadNaturezas(empresaId) {
   }
 }
 
+function applyTransportadoraContatoToForm(contato) {
+  if (!contato || typeof contato !== 'object') return;
+
+  var selectTransporte = document.getElementById('nf_transporte');
+  if (selectTransporte) {
+    selectTransporte.value = 'manual';
+    if (typeof window.setTransporteMode === 'function') window.setTransporteMode('manual');
+  }
+
+  var formNome = document.getElementById('nf_transp_nome');
+  var formDoc = document.getElementById('nf_transp_cnpj_cpf');
+  var formIe = document.getElementById('nf_transp_ie');
+  var formEnd = document.getElementById('nf_transp_endereco');
+  var formMun = document.getElementById('nf_transp_municipio');
+  var formUf = document.getElementById('nf_transp_uf');
+
+  if (formNome) formNome.value = contato.nome || contato.nome_fantasia || contato.razao_social || '';
+  if (formDoc) formDoc.value = contato.cpf_cnpj || '';
+  if (formIe && (contato.ie || contato.inscricao_estadual)) formIe.value = contato.ie || contato.inscricao_estadual;
+
+  var enderecos = Array.isArray(contato.enderecos) ? contato.enderecos : [];
+  if (enderecos.length > 0) {
+    var end = enderecos.find(function (e) { return e.tipo === 'comercial' || e.tipoEndereco === 'comercial'; }) || enderecos[0];
+    var str = end.rua || end.logradouro || '';
+    if (str && end.numero) str += ', ' + end.numero;
+    if (str && end.bairro) str += ', ' + end.bairro;
+
+    if (formEnd && str) formEnd.value = str;
+    if (formMun && (end.cidade || end.municipio)) formMun.value = end.cidade || end.municipio;
+    if (formUf && (end.estado || end.uf)) formUf.value = end.estado || end.uf;
+  } else {
+    if (formEnd && contato.logradouro) {
+      var addrStr = contato.logradouro;
+      if (contato.numero) addrStr += ', ' + contato.numero;
+      if (contato.bairro) addrStr += ', ' + contato.bairro;
+      formEnd.value = addrStr;
+    }
+    if (formMun && contato.municipio) formMun.value = contato.municipio;
+    if (formUf && contato.uf) formUf.value = contato.uf;
+  }
+}
+
+async function loadTransportadorasSelect() {
+  var sel = document.getElementById('transportadoraId');
+  if (!sel) return;
+  try {
+    var res = await fetch(API + '/fiscal/transportadoras');
+    var data = await res.json();
+    if (!res.ok) {
+      sel.innerHTML = '<option value="">Erro ao carregar</option>';
+      return;
+    }
+    var list = Array.isArray(data) ? data : [];
+    sel.innerHTML = '<option value="">Selecionar</option>' +
+      list.map(function (t) {
+        var nome = t.nome || t.nome_fantasia || t.razao_social || '';
+        var doc = t.cpf_cnpj ? ' (' + t.cpf_cnpj + ')' : '';
+        return '<option value="' + t.id + '">' + nome + doc + '</option>';
+      }).join('');
+  } catch (e) {
+    sel.innerHTML = '<option value="">Erro de rede</option>';
+  }
+}
+
 // ---------------------- Init page ----------------------
 async function loadByInvoiceId(invoiceId) {
   setPageMessage('Carregando…', 'info');
@@ -1644,6 +1778,18 @@ function initBindings() {
   var btnCarregar = document.getElementById('btnCarregarDadosNF');
   if (btnCarregar) btnCarregar.addEventListener('click', loadPreviewFromContext);
 
+  var transportadoraSel = document.getElementById('transportadoraId');
+  if (transportadoraSel) {
+    transportadoraSel.addEventListener('change', function () {
+      var id = parseInt(transportadoraSel.value || '0', 10) || 0;
+      if (!id) return;
+      fetch(API + '/fiscal/contatos/' + id)
+        .then(function (r) { return r.json(); })
+        .then(function (contato) { applyTransportadoraContatoToForm(contato); })
+        .catch(function () { setPageMessage('Erro ao carregar transportadora selecionada.', 'error'); });
+    });
+  }
+
   var naturezaSel = document.getElementById('naturezaId');
   if (naturezaSel) {
     naturezaSel.addEventListener('change', function () {
@@ -1670,6 +1816,10 @@ function initBindings() {
 
   document.getElementById('btnEmitirNF').addEventListener('click', emitFromForm);
   document.getElementById('btnAdicionarItemNF').addEventListener('click', function () { addItemRow({}, null); });
+  var btnAplicarTribuna = document.getElementById('btnAplicarTribuna');
+  if (btnAplicarTribuna) {
+    btnAplicarTribuna.addEventListener('click', applyTribunaItem);
+  }
   var btnGerarParcelas = document.getElementById('btnGerarParcelas');
   if (btnGerarParcelas) btnGerarParcelas.addEventListener('click', function () { setFormMessage('Gerar parcelas: em desenvolvimento.', 'info'); });
 
@@ -1819,7 +1969,7 @@ function initBindings() {
                   if (enderecos.length > 0) {
                     var end = enderecos.find(function (e) { return e.tipo === 'comercial' || e.tipoEndereco === 'comercial'; }) || enderecos[0];
                     var str = end.rua || end.logradouro || '';
-                    if (str && end.numero) str += ', nº ' + end.numero;
+                    if (str && end.numero) str += ', ' + end.numero;
                     if (str && end.bairro) str += ', ' + end.bairro;
 
                     if (formEnd && str) formEnd.value = str;
@@ -1829,7 +1979,7 @@ function initBindings() {
                     // Fallback: try fields directly on contato (from getCliente)
                     if (formEnd && contato.logradouro) {
                       var addrStr = contato.logradouro;
-                      if (contato.numero) addrStr += ', nº ' + contato.numero;
+                      if (contato.numero) addrStr += ', ' + contato.numero;
                       if (contato.bairro) addrStr += ', ' + contato.bairro;
                       formEnd.value = addrStr;
                     }
@@ -2004,6 +2154,7 @@ function initBindings() {
   initBindings();
   await loadEmpresas();
   await loadNaturezas();
+  await loadTransportadorasSelect();
   updateClienteBtnIcon();
   if (typeof lucide !== 'undefined') lucide.createIcons();
   var invoiceId = new URLSearchParams(window.location.search).get('invoiceId');

@@ -37,7 +37,12 @@ export class FiscalController {
 
   /** Sincroniza notas em PROCESSANDO há mais de 2 min consultando a Focus NFe (fallback quando webhook não chega). */
   @Post('sync')
-  async sync(): Promise<{ ok: number; erro: number; atualizados: number }> {
+  async sync(): Promise<{
+    ok: number;
+    erro: number;
+    atualizados: number;
+    erros_detalhes: Array<{ ref: string; invoice_id: string; mensagem: string }>;
+  }> {
     return this.fiscalSync.syncProcessando();
   }
 

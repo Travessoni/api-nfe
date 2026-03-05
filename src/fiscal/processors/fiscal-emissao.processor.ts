@@ -31,9 +31,23 @@ export class FiscalEmissaoProcessor extends WorkerHost {
   }
 
   async process(job: Job<EmissaoJobPayload>): Promise<{ ok: boolean; focusRef?: string; error?: string }> {
-    const { invoiceId, referencia, payload: payloadFromJob } = job.data;
+    const invoiceId = typeof job.data?.invoiceId === 'string' ? job.data.invoiceId.trim() : '';
+    const referencia = typeof job.data?.referencia === 'string' ? job.data.referencia.trim() : '';
+    const payloadFromJob = job.data?.payload;
+
+    if (!invoiceId) {
+      return { ok: false, error: 'Job inválido: invoiceId ausente.' };
+    }
 
     try {
+      if (!referencia) {
+        await this.supabase.updateInvoiceStatus(invoiceId, {
+          status: 'ERRO',
+          error_message: 'Referência inválida ou ausente para emissão da NFe.',
+        });
+        return { ok: false, error: 'Referência inválida ou ausente' };
+      }
+
       let payload: Record<string, unknown>;
       let temRegimeEspecial = false;
       const empresaId = Number(job.data.empresa_id ?? 0);
@@ -345,7 +359,7 @@ export class FiscalEmissaoProcessor extends WorkerHost {
         });
       }
 
-      // Token da empresa no banco (tokenHomologacao / tokenProducao): prioridade sobre env
+      // Token de produção da empresa no banco (tokenProducao): prioridade sobre env
       const empresaParaToken = empresaId > 0 ? await this.pedidoData.getEmpresa(empresaId) : null;
       const tokensFromDb = empresaParaToken
         ? {
@@ -375,15 +389,23 @@ export class FiscalEmissaoProcessor extends WorkerHost {
 
       await this.supabase.setInvoiceProcessing(invoiceId);
       await this.supabase.createEvento(invoiceId, 'payload_enviado', payload);
+
+      // Log do payload para confirmar presença do valor_total_tributos antes de enviar à Focus NFe
+      console.log(
+        `[FiscalEmissao] Enviando NFe ref=${referencia} | valor_total=${(payload as Record<string, unknown>).valor_total} | valor_total_tributos=${(payload as Record<string, unknown>).valor_total_tributos}`,
+      );
+
       await this.focusClient.emitir(referencia, payload, cnpjEmitente, tokensFromDb);
 
       return { ok: true, focusRef: referencia };
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      await this.supabase.updateInvoiceStatus(invoiceId, {
-        status: 'ERRO',
-        error_message: message,
-      });
+      if (invoiceId) {
+        await this.supabase.updateInvoiceStatus(invoiceId, {
+          status: 'ERRO',
+          error_message: message,
+        });
+      }
       // Erros de validação (422, auth) NÃO devem ser retentados pelo BullMQ
       if (err instanceof FocusNFeValidationError || err instanceof RegraTributariaNaoEncontradaError) {
         return { ok: false, error: message };

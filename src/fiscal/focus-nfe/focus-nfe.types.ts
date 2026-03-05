@@ -68,6 +68,8 @@ export interface FocusNFeItemPayload {
   ibs_valor_total?: number;
   cbs_aliquota?: number;
   cbs_valor?: number;
+  /** Lei 12.741/2012 — gera <vTotTrib> por item no XML. A soma de todos os itens deve ser igual ao valor_total_tributos do header (Focus NFe valida). */
+  valor_total_tributos?: number;
 }
 
 export interface FocusNFePayload {
@@ -112,8 +114,8 @@ export interface FocusNFePayload {
   valor_total: number;
   valor_produtos: number;
   valor_desconto?: number;
-  /** Lei 12.741/2012 — obrigatório. Nunca omitir no payload (exceto se for 0, enviar 0). */
-  valor_aproximado_tributos: number;
+  /** Lei 12.741/2012 — obrigatório. Gera <vTotTrib> no XML e exibe no DANFE. Nome exato da API Focus NFe. */
+  valor_total_tributos: number;
   modalidade_frete?: string;
   /** 1 = mesma UF, 2 = UF diferente, 3 = exterior. Obrigatório. */
   local_destino: 1 | 2 | 3;

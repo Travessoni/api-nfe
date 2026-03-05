@@ -2098,6 +2098,7 @@
 </head>
 
 <body>
+  <div id="msg" class="message" style="display:none; position:fixed; right:16px; bottom:16px; z-index:9999; max-width:420px;"></div>
   <div class="container">
     <div
       style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin-bottom: 24px;">
@@ -2518,8 +2519,10 @@
               </thead>
               <tbody id="nfItemsBody"></tbody>
             </table>
-            <button type="button" class="small" id="btnAdicionarItemNF" style="margin-top: 10px;">+ Adicionar
-              produto</button>
+            <div style="margin-top: 10px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+              <button type="button" class="small" id="btnAdicionarItemNF">+ Adicionar produto</button>
+              <button type="button" class="small btn-icon-lucide" id="btnAplicarTribuna"><i data-lucide="badge-percent"></i> TRIBUNA</button>
+            </div>
           </div>
           <div class="form-section">
             <h4 class="form-section-title">Totais</h4>
@@ -3436,7 +3439,20 @@
     const API = ''; // same origin
 
     function showMessage(elId, text, type) {
-      const el = document.getElementById(elId);
+      let el = document.getElementById(elId);
+      if (!el) {
+        // Fallback defensivo: cria um container de mensagem quando o id não existe no DOM.
+        el = document.createElement('div');
+        el.id = elId;
+        el.className = 'message';
+        el.style.display = 'none';
+        el.style.position = 'fixed';
+        el.style.right = '16px';
+        el.style.bottom = '16px';
+        el.style.zIndex = '9999';
+        el.style.maxWidth = '420px';
+        document.body.appendChild(el);
+      }
       el.textContent = text;
       el.className = 'message ' + (type || 'info');
       el.style.display = 'block';
@@ -4272,6 +4288,40 @@
       });
     }
 
+    function applyTribunaItem() {
+      updateModalCalcTotais();
+      var totalNota = parseFloat((document.getElementById('nf_valor_total') || {}).value) || 0;
+      if (totalNota <= 0) {
+        totalNota = parseFloat((document.getElementById('nf_total_nota') || {}).value) || 0;
+      }
+      if (totalNota <= 0) {
+        setModalNFMessage('Não foi possível aplicar TRIBUNA: o total da nota deve ser maior que zero.', 'error');
+        return;
+      }
+
+      var tbody = document.getElementById('nfItemsBody');
+      if (!tbody) return;
+      var firstNcmInput = tbody.querySelector('tr input[data-field="codigo_ncm"]');
+      var ncmAtual = firstNcmInput ? String(firstNcmInput.value || '').replace(/\D/g, '').slice(0, 8) : '';
+      var valorTribuna = Math.round(totalNota * 0.1 * 100) / 100;
+
+      tbody.innerHTML = '';
+      addItemRow({
+        descricao: 'TRIBUNA',
+        codigo_produto: 'TRIBUNA',
+        codigo_ncm: ncmAtual || '39205100',
+        unidade_comercial: 'UN',
+        quantidade_comercial: 1,
+        valor_unitario_comercial: valorTribuna,
+      }, 1);
+      setModalNFMessage(
+        'Item TRIBUNA aplicado. Valor definido em 10% do total da nota (R$ ' +
+        valorTribuna.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) +
+        ').',
+        'success',
+      );
+    }
+
     var sheetItemNFRow = null;
 
     function openSheetItemNF(tr) {
@@ -4435,6 +4485,10 @@
     document.getElementById('btnAdicionarItemNF').addEventListener('click', function () {
       addItemRow({}, null);
     });
+    var btnAplicarTribuna = document.getElementById('btnAplicarTribuna');
+    if (btnAplicarTribuna) {
+      btnAplicarTribuna.addEventListener('click', applyTribunaItem);
+    }
     var btnGerarParcelas = document.getElementById('btnGerarParcelas');
     if (btnGerarParcelas) btnGerarParcelas.addEventListener('click', function () {
       setModalNFMessage('Gerar parcelas: em desenvolvimento.', 'info');
@@ -5460,7 +5514,20 @@
         const res = await fetch(API + '/fiscal/sync', { method: 'POST' });
         const data = await res.json();
         if (data.atualizados > 0 || data.erro > 0) {
-          showMessage('msg', 'Sincronização: ' + data.atualizados + ' atualizada(s), ' + data.erro + ' erro(s).', data.atualizados > 0 ? 'success' : 'info');
+          let detalhe = '';
+          if (Array.isArray(data.erros_detalhes) && data.erros_detalhes.length > 0) {
+            const top = data.erros_detalhes.slice(0, 2).map(function (d) {
+              const ref = d && d.ref ? String(d.ref) : 'sem-ref';
+              const msg = d && d.mensagem ? String(d.mensagem) : 'erro desconhecido';
+              return ref + ': ' + msg;
+            }).join(' | ');
+            detalhe = ' Detalhes: ' + top;
+          }
+          showMessage(
+            'msg',
+            'Sincronização: ' + data.atualizados + ' atualizada(s), ' + data.erro + ' erro(s).' + detalhe,
+            data.atualizados > 0 ? 'success' : 'info',
+          );
         }
         loadInvoices();
       } catch (e) {
