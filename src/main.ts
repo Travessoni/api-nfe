@@ -13,7 +13,9 @@ async function bootstrap() {
       transform: true,
     }),
   );
-  app.useStaticAssets(join(__dirname, '..', 'public'), { prefix: '/painel/' });
+
+  const staticRoot = join(process.cwd(), 'public');
+  app.useStaticAssets(staticRoot, { prefix: '/painel' });
   const port = process.env.PORT ?? 3000;
   await app.listen(port);
   console.log(`Application is running on: http://localhost:${port}`);

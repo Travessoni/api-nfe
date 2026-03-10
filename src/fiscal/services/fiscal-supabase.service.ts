@@ -352,4 +352,26 @@ export class FiscalSupabaseService implements OnModuleDestroy {
       ? ((data as { payload: Record<string, unknown> }).payload)
       : null;
   }
+
+  // --- Storage ---
+  async uploadPdfToStorage(buffer: Buffer, fileName: string): Promise<string> {
+    const { data, error } = await this.getClient()
+      .storage
+      .from('notasFiscais')
+      .upload(fileName, buffer, {
+        upsert: true,
+        contentType: 'application/pdf',
+      });
+
+    if (error) {
+      throw new Error(`Erro ao fazer upload do PDF para o storage: ${error.message}`);
+    }
+
+    const { data: publicUrlData } = this.getClient()
+      .storage
+      .from('notasFiscais')
+      .getPublicUrl(fileName);
+
+    return publicUrlData.publicUrl;
+  }
 }

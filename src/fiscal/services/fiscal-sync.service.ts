@@ -99,6 +99,26 @@ export class FiscalSyncService implements OnModuleInit, OnModuleDestroy {
           if (xmlPath) update.xml_url = this.focusClient.buildFocusNFeUrl(xmlPath);
           const danfePath = (res as { caminho_danfe?: string }).caminho_danfe ?? res.caminho_pdf_nota_fiscal;
           if (danfePath) update.pdf_url = this.focusClient.buildFocusNFeUrl(danfePath);
+
+          if (statusNorm === 'AUTORIZADO' && res.chave_nfe) {
+            try {
+              let pdfUrlToDownload = update.pdf_url;
+              if (!pdfUrlToDownload) throw new Error('Caminho DANFE ausente na Sefaz para baixar');
+
+              const pdfRes = await fetch(pdfUrlToDownload);
+              if (!pdfRes.ok) throw new Error(`Falha ao baixar PDF da Sefaz: ${pdfRes.statusText}`);
+              const pdfBuffer = Buffer.from(await pdfRes.arrayBuffer());
+
+              const ano = new Date().getFullYear().toString();
+              const fileName = `${ano}/NFe${res.chave_nfe}.pdf`;
+              const publicUrl = await this.supabase.uploadPdfToStorage(pdfBuffer, fileName);
+              update.pdf_url = publicUrl;
+              this.logger.log(`PDF salvo automaticamente no storage: ${publicUrl}`);
+            } catch (errPdf) {
+              this.logger.warn(`Falha ao salvar PDF no storage na sync (ref=${focusId}): ${errPdf instanceof Error ? errPdf.message : String(errPdf)}`);
+            }
+          }
+
           if (statusNorm !== 'AUTORIZADO' && (res.mensagem_sefaz ?? (res as { mensagem?: string }).mensagem)) {
             update.error_message = (res.mensagem_sefaz ?? (res as { mensagem?: string }).mensagem) ?? undefined;
           }

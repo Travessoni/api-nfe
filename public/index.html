@@ -212,6 +212,14 @@
       padding: 12px;
       border-radius: 8px;
       font-size: 0.9rem;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity 0.25s ease, transform 0.25s ease;
+    }
+
+    .message.toast-visible {
+      opacity: 1;
+      transform: translateY(0);
     }
 
     .message.success {
@@ -487,41 +495,48 @@
 
     #invoiceList table th:nth-child(1),
     #invoiceList table td:nth-child(1) {
-      flex: 0 0 120px;
-      width: 120px;
+      flex: 0 0 48px;
+      width: 48px;
+      justify-content: center;
     }
 
     #invoiceList table th:nth-child(2),
     #invoiceList table td:nth-child(2) {
-      flex: 0 0 160px;
-      width: 160px;
-    }
-
-    #invoiceList table th:nth-child(3),
-    #invoiceList table td:nth-child(3) {
-      flex: 1 1 0;
-      min-width: 140px;
-    }
-
-    #invoiceList table th:nth-child(4),
-    #invoiceList table td:nth-child(4) {
-      flex: 0 0 200px;
-      width: 200px;
-    }
-
-    #invoiceList table th:nth-child(5),
-    #invoiceList table td:nth-child(5) {
-      flex: 0 0 160px;
-      width: 160px;
-    }
-
-    #invoiceList table th:nth-child(6),
-    #invoiceList table td:nth-child(6) {
       flex: 0 0 120px;
       width: 120px;
     }
 
+    #invoiceList table th:nth-child(3),
+    #invoiceList table td:nth-child(3) {
+      flex: 0 0 160px;
+      width: 160px;
+    }
+
+    #invoiceList table th:nth-child(4),
+    #invoiceList table td:nth-child(4) {
+      flex: 1 1 0;
+      min-width: 140px;
+    }
+
+    #invoiceList table th:nth-child(5),
+    #invoiceList table td:nth-child(5) {
+      flex: 0 0 200px;
+      width: 200px;
+    }
+
+    #invoiceList table th:nth-child(6),
     #invoiceList table td:nth-child(6) {
+      flex: 0 0 160px;
+      width: 160px;
+    }
+
+    #invoiceList table th:nth-child(7),
+    #invoiceList table td:nth-child(7) {
+      flex: 0 0 120px;
+      width: 120px;
+    }
+
+    #invoiceList table td:nth-child(7) {
       display: flex;
       justify-content: flex-end;
       align-items: center;
@@ -618,6 +633,13 @@
       vertical-align: middle;
     }
 
+    .skeleton-table th:nth-child(1),
+    .skeleton-table td:nth-child(1) {
+      padding: 10px 0;
+      text-align: center;
+      justify-content: center;
+    }
+
     .skeleton-table th {
       color: #a1a1aa;
       font-weight: 400;
@@ -648,7 +670,7 @@
       width: 80%;
     }
 
-    .skeleton-table td:nth-child(6) .skeleton-bar {
+    .skeleton-table td:nth-child(8) .skeleton-bar {
       max-width: 80px;
       margin-left: auto;
     }
@@ -2089,6 +2111,202 @@
         align-items: flex-start;
       }
     }
+
+    /* NFe Selection & Floating Bar */
+    .checkbox-wrapper {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .checkbox-wrapper input[type="checkbox"] {
+      position: absolute;
+      opacity: 0;
+      cursor: pointer;
+      height: 0;
+      width: 0;
+    }
+
+    .checkmark {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 20px;
+      width: 20px;
+      background-color: transparent;
+      border: 1px solid #3f3f46;
+      border-radius: 6px;
+      transition: all 0.2s ease;
+      color: transparent;
+    }
+
+    .checkbox-wrapper:hover input~.checkmark {
+      border-color: #52525b;
+    }
+
+    .checkbox-wrapper input:checked~.checkmark {
+      background-color: #fafafa;
+      border-color: #fafafa;
+      color: #161618;
+    }
+
+    .checkmark svg {
+      width: 14px;
+      height: 14px;
+      stroke-width: 3;
+    }
+
+    .floating-action-bar {
+      position: fixed;
+      bottom: -100px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1D1D20;
+      border: 1px solid #27272A;
+      border-radius: 12px;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05);
+      z-index: 90;
+      transition: bottom 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .floating-action-bar.visible {
+      bottom: 32px;
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .fab-count-badge {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding-right: 16px;
+      border-right: 1px solid #27272A;
+      font-weight: 500;
+      font-size: 14px;
+      color: #fafafa;
+    }
+
+    .fab-count-number {
+      background: #fafafa;
+      color: #161618;
+      border-radius: 6px;
+      padding: 2px 8px;
+      font-weight: 600;
+      font-size: 11px;
+    }
+
+    .fab-close-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: none;
+      color: #a1a1aa;
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 6px;
+      margin-left: -8px;
+    }
+
+    .fab-close-btn:hover {
+      color: #fafafa;
+      background: #27272A;
+    }
+
+    .fab-actions-group {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding-right: 12px;
+      border-right: 1px solid #27272A;
+    }
+
+    .fab-actions-group:last-child {
+      border-right: none;
+      padding-right: 0;
+    }
+
+    .btn-fab-action {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: transparent;
+      border: 1px solid transparent;
+      color: #e4e4e7;
+      font-size: 14px;
+      font-weight: 500;
+      padding: 6px 12px;
+      border-radius: 8px;
+      height: 36px;
+      min-height: 36px;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .btn-fab-action:hover {
+      background: #27272A;
+      color: #fafafa;
+    }
+
+    .btn-fab-action i {
+      width: 14px;
+      height: 14px;
+    }
+
+    /* Global Spinner Overlay */
+    .global-spinner-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(2px);
+      z-index: 10000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #fafafa;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.2s ease, visibility 0.2s ease;
+    }
+
+    .global-spinner-overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .global-spinner {
+      width: 48px;
+      height: 48px;
+      border: 4px solid rgba(255, 255, 255, 0.2);
+      border-top-color: #fafafa;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 16px;
+    }
+
+    .global-spinner-text {
+      font-size: 16px;
+      font-weight: 500;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
   </style>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <script src="https://unpkg.com/lucide@latest"></script>
@@ -2098,7 +2316,14 @@
 </head>
 
 <body>
-  <div id="msg" class="message" style="display:none; position:fixed; right:16px; bottom:16px; z-index:9999; max-width:420px;"></div>
+  <!-- Global Spinner -->
+  <div id="globalSpinnerOverlay" class="global-spinner-overlay">
+    <div class="global-spinner"></div>
+    <div class="global-spinner-text" id="globalSpinnerText">Carregando...</div>
+  </div>
+
+  <div id="msg" class="message"
+    style="display:none; position:fixed; right:16px; bottom:16px; z-index:9999; max-width:420px;"></div>
   <div class="container">
     <div
       style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin-bottom: 24px;">
@@ -2154,6 +2379,7 @@
         <table class="skeleton-table" id="invoiceListSkeleton">
           <thead>
             <tr>
+              <th></th>
               <th>Número</th>
               <th>Data emissão</th>
               <th>Nome</th>
@@ -2168,23 +2394,6 @@
                 <div class="skeleton-bar short"></div>
               </td>
               <td>
-                <div class="skeleton-bar medium"></div>
-              </td>
-              <td>
-                <div class="skeleton-bar long"></div>
-              </td>
-              <td>
-                <div class="skeleton-bar medium"></div>
-              </td>
-              <td>
-                <div class="skeleton-bar short"></div>
-              </td>
-              <td>
-                <div class="skeleton-bar short"></div>
-              </td>
-            </tr>
-            <tr>
-              <td>
                 <div class="skeleton-bar short"></div>
               </td>
               <td>
@@ -2208,6 +2417,32 @@
                 <div class="skeleton-bar short"></div>
               </td>
               <td>
+                <div class="skeleton-bar short"></div>
+              </td>
+              <td>
+                <div class="skeleton-bar medium"></div>
+              </td>
+              <td>
+                <div class="skeleton-bar long"></div>
+              </td>
+              <td>
+                <div class="skeleton-bar medium"></div>
+              </td>
+              <td>
+                <div class="skeleton-bar short"></div>
+              </td>
+              <td>
+                <div class="skeleton-bar short"></div>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <div class="skeleton-bar short"></div>
+              </td>
+              <td>
+                <div class="skeleton-bar short"></div>
+              </td>
+              <td>
                 <div class="skeleton-bar medium"></div>
               </td>
               <td>
@@ -2228,6 +2463,9 @@
                 <div class="skeleton-bar short"></div>
               </td>
               <td>
+                <div class="skeleton-bar short"></div>
+              </td>
+              <td>
                 <div class="skeleton-bar medium"></div>
               </td>
               <td>
@@ -2244,6 +2482,9 @@
               </td>
             </tr>
             <tr>
+              <td>
+                <div class="skeleton-bar short"></div>
+              </td>
               <td>
                 <div class="skeleton-bar short"></div>
               </td>
@@ -2521,7 +2762,8 @@
             </table>
             <div style="margin-top: 10px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
               <button type="button" class="small" id="btnAdicionarItemNF">+ Adicionar produto</button>
-              <button type="button" class="small btn-icon-lucide" id="btnAplicarTribuna"><i data-lucide="badge-percent"></i> TRIBUNA</button>
+              <button type="button" class="small btn-icon-lucide" id="btnAplicarTribuna"><i
+                  data-lucide="badge-percent"></i> TRIBUNA</button>
             </div>
           </div>
           <div class="form-section">
@@ -3438,6 +3680,20 @@
   <script>
     const API = ''; // same origin
 
+    function showGlobalSpinner(text = 'Carregando...') {
+      const overlay = document.getElementById('globalSpinnerOverlay');
+      const textEl = document.getElementById('globalSpinnerText');
+      if (overlay) {
+        if (textEl) textEl.textContent = text;
+        overlay.classList.add('active');
+      }
+    }
+
+    function hideGlobalSpinner() {
+      const overlay = document.getElementById('globalSpinnerOverlay');
+      if (overlay) overlay.classList.remove('active');
+    }
+
     function showMessage(elId, text, type) {
       let el = document.getElementById(elId);
       if (!el) {
@@ -3453,9 +3709,32 @@
         el.style.maxWidth = '420px';
         document.body.appendChild(el);
       }
+
       el.textContent = text;
       el.className = 'message ' + (type || 'info');
+
+      // Limpa timeouts anteriores para o mesmo elemento
+      if (el._toastHideTimeout) {
+        clearTimeout(el._toastHideTimeout);
+      }
+      if (el._toastRemoveTimeout) {
+        clearTimeout(el._toastRemoveTimeout);
+      }
+
+      // Mostra com animação de entrada
       el.style.display = 'block';
+      // força reflow para aplicar a transição
+      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+      el.offsetHeight;
+      el.classList.add('toast-visible');
+
+      // Mantém visível por 5000ms, depois anima saída e remove
+      el._toastHideTimeout = setTimeout(function () {
+        el.classList.remove('toast-visible');
+        el._toastRemoveTimeout = setTimeout(function () {
+          el.style.display = 'none';
+        }, 450);
+      }, 4000);
     }
 
     function openModalSituacoes(invoiceId) {
@@ -4301,19 +4580,23 @@
 
       var tbody = document.getElementById('nfItemsBody');
       if (!tbody) return;
-      var firstNcmInput = tbody.querySelector('tr input[data-field="codigo_ncm"]');
-      var ncmAtual = firstNcmInput ? String(firstNcmInput.value || '').replace(/\D/g, '').slice(0, 8) : '';
       var valorTribuna = Math.round(totalNota * 0.1 * 100) / 100;
 
       tbody.innerHTML = '';
       addItemRow({
         descricao: 'TRIBUNA',
         codigo_produto: 'TRIBUNA',
-        codigo_ncm: ncmAtual || '39205100',
+        codigo_ncm: '39205100',
         unidade_comercial: 'UN',
         quantidade_comercial: 1,
         valor_unitario_comercial: valorTribuna,
       }, 1);
+      // Garante que o input visível de NCM na linha do item TRIBUNA esteja com o valor correto
+      var tribunaRow = tbody.querySelector('tr');
+      if (tribunaRow) {
+        var tribunaNcmInput = tribunaRow.querySelector('input[data-field="codigo_ncm"]');
+        if (tribunaNcmInput) tribunaNcmInput.value = '39205100';
+      }
       setModalNFMessage(
         'Item TRIBUNA aplicado. Valor definido em 10% do total da nota (R$ ' +
         valorTribuna.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) +
@@ -4633,6 +4916,37 @@
     function openModalAdicionarNF() {
       resetModalNF();
       var pedidoId = document.getElementById('pedidoId').value.trim();
+
+      // ... (code omitted for brevity, but I will put the save function before openModalAdicionarNF) ...
+    }
+
+    function savePdfManual(id) {
+      if (!id) return;
+      showGlobalSpinner('Salvando PDF no Storage...');
+      fetch(API + '/fiscal/' + id + '/save-pdf', {
+        method: 'POST',
+      })
+        .then(function (res) {
+          if (!res.ok) {
+            return res.json().then(function (err) {
+              throw new Error(err.message || 'Erro ao salvar PDF');
+            });
+          }
+          return res.json();
+        })
+        .then(function (data) {
+          showMessage('msg', data.message || 'PDF salvo com sucesso!', 'success');
+          loadInvoices(); // reload the table to get the updated pdf_url
+        })
+        .catch(function (error) {
+          showMessage('msg', error.message, 'error');
+        })
+        .finally(function () {
+          hideGlobalSpinner();
+        });
+    }
+
+    function openModalAdicionarNF() {
       var empresaId = document.getElementById('empresaId').value.trim();
       var naturezaId = document.getElementById('naturezaId').value.trim();
       pedidoId = pedidoId ? parseInt(pedidoId, 10) : 0;
@@ -5107,8 +5421,8 @@
     var totalInvoicesCount = 0;
     var totalInvoicesPages = 0;
     function getInvoiceListSkeletonHtml() {
-      var row = '<tr><td><div class="skeleton-bar short"></div></td><td><div class="skeleton-bar medium"></div></td><td><div class="skeleton-bar long"></div></td><td><div class="skeleton-bar medium"></div></td><td><div class="skeleton-bar short"></div></td><td><div class="skeleton-bar short"></div></td></tr>';
-      return '<table class="skeleton-table"><thead><tr><th>Número</th><th>Data emissão</th><th>Nome</th><th>Situação</th><th>Valor (R$)</th><th></th></tr></thead><tbody>' + (row.repeat(5)) + '</tbody></table>';
+      var row = '<tr><td><div class="skeleton-bar short" style="width: 20px;"></div></td><td><div class="skeleton-bar medium"></div></td><td><div class="skeleton-bar long"></div></td><td><div class="skeleton-bar medium"></div></td><td><div class="skeleton-bar short"></div></td><td><div class="skeleton-bar short"></div></td><td><div class="skeleton-bar short"></div></td></tr>';
+      return '<table class="skeleton-table"><thead><tr><th><label class="checkbox-wrapper"><input type="checkbox" disabled><div class="checkmark"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div></label></th><th>Número</th><th>Data emissão</th><th>Nome</th><th>Situação</th><th>Valor (R$)</th><th></th></tr></thead><tbody>' + (row.repeat(5)) + '</tbody></table>';
     }
     function renderInvoiceTable(list) {
       const wrap = document.getElementById('invoiceList');
@@ -5119,7 +5433,7 @@
       }
       const base = window.location.origin;
       wrap.innerHTML =
-        '<table><thead><tr><th>Número</th><th>Data emissão</th><th>Nome</th><th>Situação</th><th>Valor (R$)</th><th></th></tr></thead><tbody>' +
+        '<table><thead><tr><th><label class="checkbox-wrapper" title="Selecionar todos"><input type="checkbox" id="checkboxSelectAllInvoices"><div class="checkmark"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div></label></th><th>Número</th><th>Data emissão</th><th>Nome</th><th>Situação</th><th>Valor (R$)</th><th></th></tr></thead><tbody>' +
         list.map(function (inv) {
           const dataEmissao = inv.data_emissao
             ? new Date(inv.data_emissao).toLocaleDateString('pt-BR')
@@ -5127,9 +5441,14 @@
           const valor = inv.valor_total != null
             ? Number(inv.valor_total).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
             : '-';
+          const numeroNf =
+            inv.numero_nf != null
+              ? String(inv.numero_nf).padStart(4, '0')
+              : '-';
           return (
-            '<tr>' +
-            '<td>' + (inv.numero_nf != null ? inv.numero_nf : '-') + '</td>' +
+            '<tr data-id="' + inv.id + '">' +
+            '<td><label class="checkbox-wrapper" onclick="event.stopPropagation()"><input type="checkbox" class="checkbox-invoice-row" value="' + inv.id + '"><div class="checkmark"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div></label></td>' +
+            '<td>' + numeroNf + '</td>' +
             '<td>' + dataEmissao + '</td>' +
             '<td><span class="cliente-nome-link" data-invoice-id="' + inv.id + '" role="button" tabindex="0" title="Editar cliente">' + (inv.nome_cliente || '-') + '</span></td>' +
             '<td><span class="status ' + inv.status + ' clickable" data-invoice-id="' + inv.id + '" role="button" tabindex="0" title="Ver situações">' + inv.status + '</span></td>' +
@@ -5150,6 +5469,7 @@
             '     <button type="button" class="dropdown-item" data-action="nfe-complementar"><span class="dropdown-item-icon"><i data-lucide="globe"></i></span>NFe complementar</button>' +
             '     <a href="' + (inv.pdf_url || base + '/fiscal/' + inv.id + '/pdf') + '" target="_blank" rel="noopener" class="dropdown-item" data-action="pdf"><span class="dropdown-item-icon"><i data-lucide="file-text"></i></span>Gerar PDF DANFE</a>' +
             '     <a href="' + (inv.xml_url || base + '/fiscal/' + inv.id + '/xml') + '" target="_blank" rel="noopener" class="dropdown-item" data-action="xml"><span class="dropdown-item-icon"><i data-lucide="file-code"></i></span>Ver XML</a>' +
+            (inv.status === 'AUTORIZADO' ? '     <button type="button" class="dropdown-item" data-action="save-pdf"><span class="dropdown-item-icon"><i data-lucide="hard-drive"></i></span>Salvar PDF no storage</button>' : '') +
             '     <button type="button" class="dropdown-item" data-action="gerar-devolucao"><span class="dropdown-item-icon"><i data-lucide="arrow-down"></i></span>Gerar devolução</button>' +
             '     <div class="dropdown-divider"></div>' +
             '     <button type="button" class="dropdown-item" data-action="clonar"><span class="dropdown-item-icon"><i data-lucide="copy"></i></span>Clonar nota</button>' +
@@ -5211,6 +5531,37 @@
         });
       });
       if (typeof lucide !== 'undefined') lucide.createIcons();
+      if (typeof NfeSelectionManager !== 'undefined') NfeSelectionManager.syncTableState();
+    }
+
+    function handleNfeOpcao(action, id) {
+      if (action === 'gerar-devolucao' || action === 'clonar' || action === 'clonar-entrada') {
+        showMessage('msg', 'Ação "' + action + '" em desenvolvimento.', 'info');
+      } else if (action === 'carta-correcao') {
+        showMessage('msg', 'Ação "carta-correcao" em desenvolvimento.', 'info');
+      } else if (action === 'nfe-complementar') {
+        showMessage('msg', 'Ação "nfe-complementar" em desenvolvimento.', 'info');
+      } else if (action === 'outras-opcoes') {
+        showMessage('msg', 'Outras opções de NF-e em desenvolvimento.', 'info');
+      } else if (action === 'ver-json') {
+        fetch(API + '/fiscal/' + id)
+          .then(function (res) { return res.json(); })
+          .then(function (data) {
+            var payload = data.payload_json || {};
+            openModalPreviewChamada(payload);
+          })
+          .catch(function (e) { showMessage('msg', 'Erro ao buscar notas fiscais: ' + e.message, 'error'); });
+      } else if (action === 'enviar') {
+        enviarNfe(id);
+      } else if (action === 'cancelar') {
+        cancelNfe(id);
+      } else if (action === 'delete') {
+        if (confirm('Tem certeza que deseja excluir esta NFe?')) {
+          deleteInvoice(id);
+        }
+      } else if (action === 'save-pdf') {
+        savePdfManual(id);
+      }
     }
 
     function renderPagination() {
@@ -5571,6 +5922,268 @@
         empresaEl.addEventListener('change', applyInvoiceFilters);
       }
     })();
+
+    const NfeSelectionManager = {
+      selectedIds: new Set(),
+
+      init() {
+        this.renderFab();
+        this.bindEvents();
+      },
+
+      renderFab() {
+        const fab = document.createElement('div');
+        fab.className = 'floating-action-bar';
+        fab.id = 'nfeFloatingActionBar';
+        fab.innerHTML = `
+          <div class="fab-count-badge">
+            <span class="fab-count-number" id="fabCount">0</span>
+            <span id="fabCountText">NF-es selecionadas</span>
+          </div>
+          <button type="button" class="fab-close-btn" id="fabCloseBtn" title="Limpar seleção">
+            <i data-lucide="x"></i>
+          </button>
+          
+          <div class="fab-actions-group">
+            <button type="button" class="btn-fab-action" data-batch-action="enviar">
+              <i data-lucide="send" style="width: 16px; height: 16px;"></i> Enviar NF-es selecionadas
+            </button>
+            <button type="button" class="btn-fab-action" data-batch-action="imprimir">
+              <i data-lucide="printer" style="width: 16px; height: 16px;"></i> Imprimir NF-es selecionadas
+            </button>
+          </div>
+        `;
+        document.body.appendChild(fab);
+        if (typeof lucide !== 'undefined') lucide.createIcons({ root: fab });
+      },
+
+      bindEvents() {
+        const wrap = document.getElementById('invoiceList');
+        if (wrap) {
+          wrap.addEventListener('change', (e) => {
+            if (e.target.id === 'checkboxSelectAllInvoices') {
+              const masterChecked = e.target.checked;
+              const checkboxes = wrap.querySelectorAll('.checkbox-invoice-row');
+              checkboxes.forEach(cb => {
+                cb.checked = masterChecked;
+                if (masterChecked) {
+                  this.selectedIds.add(cb.value);
+                } else {
+                  this.selectedIds.delete(cb.value);
+                }
+              });
+              this.updateUI();
+            } else if (e.target.classList.contains('checkbox-invoice-row')) {
+              if (e.target.checked) {
+                this.selectedIds.add(e.target.value);
+              } else {
+                this.selectedIds.delete(e.target.value);
+              }
+              const masterCb = document.getElementById('checkboxSelectAllInvoices');
+              const totalItems = wrap.querySelectorAll('.checkbox-invoice-row').length;
+              if (masterCb && totalItems > 0) {
+                masterCb.checked = (this.selectedIds.size === totalItems && totalItems > 0);
+              }
+              this.updateUI();
+            }
+          });
+        }
+
+        const closeBtn = document.getElementById('fabCloseBtn');
+        if (closeBtn) closeBtn.addEventListener('click', () => this.clear());
+
+        document.body.addEventListener('click', (e) => {
+          const btn = e.target.closest('.btn-fab-action');
+          if (btn) {
+            const action = btn.getAttribute('data-batch-action');
+            this.handleBatchAction(action);
+          }
+        });
+      },
+
+      clear() {
+        this.selectedIds.clear();
+        const masterCb = document.getElementById('checkboxSelectAllInvoices');
+        if (masterCb) masterCb.checked = false;
+        document.querySelectorAll('.checkbox-invoice-row').forEach(cb => cb.checked = false);
+        this.updateUI();
+      },
+
+      syncTableState() {
+        const checkboxes = document.querySelectorAll('.checkbox-invoice-row');
+        let allChecked = true;
+        let hasItems = checkboxes.length > 0;
+        checkboxes.forEach(cb => {
+          if (this.selectedIds.has(cb.value)) {
+            cb.checked = true;
+          } else {
+            allChecked = false;
+          }
+        });
+        const masterCb = document.getElementById('checkboxSelectAllInvoices');
+        if (masterCb) masterCb.checked = hasItems ? allChecked : false;
+        this.updateUI();
+      },
+
+      updateUI() {
+        const fab = document.getElementById('nfeFloatingActionBar');
+        if (!fab) return;
+        const count = this.selectedIds.size;
+        const countEl = document.getElementById('fabCount');
+        const textEl = document.getElementById('fabCountText');
+        if (countEl) countEl.textContent = count;
+        if (textEl) textEl.textContent = count === 1 ? 'NF-e selecionada' : 'NF-es selecionadas';
+
+        if (count > 0) {
+          fab.classList.add('visible');
+        } else {
+          fab.classList.remove('visible');
+        }
+      },
+
+      async handleBatchAction(action) {
+        const ids = Array.from(this.selectedIds);
+        if (!ids.length) return;
+        const total = ids.length;
+
+        if (action === 'xml-lote') {
+          if (total > 5 && !confirm(`Isso tentará abrir ${total} abas no navegador. Pode ser bloqueado pelo seu bloqueador de pop-ups. Deseja continuar?`)) return;
+
+          ids.forEach((id, index) => {
+            setTimeout(() => {
+              const url = `/fiscal/${id}/xml`;
+              window.open(window.location.origin + url, '_blank');
+            }, index * 100);
+          });
+          this.clear();
+          return;
+        }
+
+        // Ações de visualização/impressão (PDF em lote)
+        if (action === 'imprimir' || action === 'pdf-lote' || action === 'imprimir-simplificado') {
+          const btnClose = document.getElementById('fabCloseBtn');
+          const orgBtnHtml = btnClose ? btnClose.innerHTML : '';
+          if (btnClose) {
+            btnClose.innerHTML = '<span style="font-size: 12px; margin-right: 8px;">Gerando PDFs...</span>';
+            btnClose.style.width = 'auto';
+          }
+
+          try {
+            const res = await fetch(API + '/fiscal/batch/pdf', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ invoiceIds: ids })
+            });
+
+            if (res.ok) {
+              const blob = await res.blob();
+              const url = URL.createObjectURL(blob);
+
+              const iframe = document.createElement('iframe');
+              iframe.style.position = 'absolute';
+              iframe.style.width = '0';
+              iframe.style.height = '0';
+              iframe.style.border = 'none';
+              iframe.src = url;
+              document.body.appendChild(iframe);
+
+              iframe.onload = function () {
+                setTimeout(() => {
+                  try {
+                    iframe.contentWindow.focus();
+                    iframe.contentWindow.print();
+                  } catch (err) {
+                    console.error('Erro ao imprimir iframe', err);
+                    window.open(url, '_blank');
+                  }
+                }, 500);
+              };
+            } else {
+              let err;
+              try { err = await res.json(); } catch (e) { err = {}; }
+              let msg = err.message || 'Erro ao gerar PDFs em lote.';
+              if (err.debug && Array.isArray(err.debug)) {
+                msg += ' Detalhes: ' + err.debug.join(', ');
+              }
+              showMessage('msg', msg, 'error');
+            }
+          } catch (e) {
+            showMessage('msg', 'Falha de comunicação ao obter PDFs em lote.', 'error');
+          }
+
+          if (btnClose) {
+            btnClose.innerHTML = orgBtnHtml;
+            btnClose.style.width = '';
+            if (typeof lucide !== 'undefined') lucide.createIcons({ root: btnClose.parentElement });
+          }
+          this.clear();
+          return;
+        }
+
+        // Ações não implementadas ainda
+        if (action === 'enviar-dados') {
+          showMessage('msg', 'Ação selecionada ainda em desenvolvimento.', 'info');
+          return;
+        }
+
+        let confirmMsg = '';
+        if (action === 'enviar' || action === 'enviar-pendentes') {
+          confirmMsg = `Deseja processar o envio de ${total} NF-e(s) para a Sefaz?`;
+        } else {
+          confirmMsg = `Deseja processar ${total} itens?`;
+        }
+
+        if (confirmMsg && !confirm(confirmMsg)) return;
+
+        // Feedback visual de carregamento
+        const btnClose = document.getElementById('fabCloseBtn');
+        const orgBtnHtml = btnClose ? btnClose.innerHTML : '';
+        if (btnClose) {
+          btnClose.innerHTML = '<span style="font-size: 12px; margin-right: 8px;">Processando...</span>';
+          btnClose.style.width = 'auto';
+        }
+
+        let successCount = 0;
+        let errorCount = 0;
+
+        // Disparo serial das requisições para não sobrecarregar
+        for (const id of ids) {
+          try {
+            let url = '';
+            let method = 'POST';
+            if (action === 'enviar' || action === 'enviar-pendentes') {
+              url = API + '/fiscal/' + id + '/enviar';
+            }
+
+            if (url) {
+              const res = await fetch(url, { method });
+              if (res.ok) {
+                successCount++;
+              } else {
+                errorCount++;
+              }
+            } else {
+              // Endpoint não mapeado conta como erro genérico para este loop
+              errorCount++;
+            }
+          } catch (e) {
+            errorCount++;
+          }
+        }
+
+        // Restaura botão de fechar e limpa
+        if (btnClose) {
+          btnClose.innerHTML = orgBtnHtml;
+          btnClose.style.width = '';
+          if (typeof lucide !== 'undefined') lucide.createIcons({ root: btnClose.parentElement });
+        }
+
+        showMessage('msg', `Processamento em lote concluído: ${successCount} sucesso(s), ${errorCount} erro(s).`, successCount > 0 ? (errorCount === 0 ? 'success' : 'info') : 'error');
+        this.clear();
+        loadInvoices();
+      }
+    };
+    NfeSelectionManager.init();
 
     initInvoiceFilterDropdowns();
     loadEmpresasFiltro();

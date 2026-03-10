@@ -2,6 +2,7 @@ import { Controller, Post, Body, Headers, HttpCode, HttpStatus, Logger } from '@
 import { ConfigService } from '@nestjs/config';
 import { FiscalSupabaseService } from '../services/fiscal-supabase.service';
 import { FocusNFeClientService } from '../focus-nfe/focus-nfe-client.service';
+import { PedidoDataService } from '../services/pedido-data.service';
 
 /**
  * Webhook chamado pela Focus NFe quando o status da NFe muda.
@@ -17,6 +18,7 @@ export class FiscalWebhookController {
   constructor(
     private readonly supabase: FiscalSupabaseService,
     private readonly focusClient: FocusNFeClientService,
+    private readonly pedidoData: PedidoDataService,
     private readonly config: ConfigService,
   ) { }
 
@@ -82,6 +84,25 @@ export class FiscalWebhookController {
     const danfePath = (body.caminho_danfe as string) || (body.caminho_pdf_nota_fiscal as string) || '';
     if (danfePath) {
       update.pdf_url = this.focusClient.buildFocusNFeUrl(danfePath);
+    }
+
+    if (statusNormalizado === 'AUTORIZADO' && body.chave_nfe) {
+      try {
+        let pdfUrlToDownload = update.pdf_url;
+        if (!pdfUrlToDownload) throw new Error('Nenhuma URL de PDF no payload do webhook.');
+
+        const pdfRes = await fetch(pdfUrlToDownload);
+        if (!pdfRes.ok) throw new Error(`Falha ao baixar PDF da Sefaz: ${pdfRes.statusText}`);
+        const pdfBuffer = Buffer.from(await pdfRes.arrayBuffer());
+
+        const ano = new Date().getFullYear().toString();
+        const fileName = `${ano}/NFe${body.chave_nfe}.pdf`;
+        const publicUrl = await this.supabase.uploadPdfToStorage(pdfBuffer, fileName);
+        update.pdf_url = publicUrl;
+        this.logger.log(`PDF salvo automaticamente no storage (Webhook): ${publicUrl}`);
+      } catch (errPdf) {
+        this.logger.warn(`Falha ao salvar PDF no storage pelo webhook (ref=${ref}): ${errPdf instanceof Error ? errPdf.message : String(errPdf)}`);
+      }
     }
     if (statusNormalizado !== 'AUTORIZADO' && (body.mensagem_sefaz ?? body.mensagem)) {
       update.error_message = (body.mensagem_sefaz ?? body.mensagem) as string;

@@ -289,7 +289,7 @@ export class FocusNFeClientService {
     tipo: 'xml' | 'pdf',
     cnpjEmitente?: string,
     tokensFromDb?: FocusNFeTokensFromDb | null,
-  ): Promise<{ body: ReadableStream<Uint8Array>; contentType: string }> {
+  ): Promise<{ buffer: Buffer; contentType: string }> {
     const path = this.getDownloadPath(referencia, tipo);
     const token = this.getToken(
       cnpjEmitente ? normalizarCnpj(cnpjEmitente) : undefined,
@@ -297,20 +297,32 @@ export class FocusNFeClientService {
     );
     const url = `${this.getBaseUrl()}${path}`;
     const auth = Buffer.from(`${token}:`).toString('base64');
-    const res = await fetch(url, {
+
+    let res = await fetch(url, {
       method: 'GET',
       headers: { Authorization: `Basic ${auth}` },
+      redirect: 'manual', // Impede que o header Authorization vaze para o S3
     });
+
+    if (res.status >= 300 && res.status < 400 && res.headers.has('location')) {
+      const redirectUrl = res.headers.get('location');
+      if (redirectUrl) {
+        res = await fetch(redirectUrl, { method: 'GET' });
+      }
+    }
+
     if (!res.ok) {
       const text = await res.text();
       throw new Error(`Focus NFe download ${tipo} ${res.status}: ${text.slice(0, 200)}`);
     }
-    const body = res.body;
-    if (!body) throw new Error('Focus NFe: resposta sem body');
+
+    const arrayBuffer = await res.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    if (!buffer || buffer.length === 0) throw new Error('Focus NFe: resposta sem dados');
     const contentType =
       tipo === 'xml'
         ? 'application/xml'
         : 'application/pdf';
-    return { body, contentType: res.headers.get('content-type') || contentType };
+    return { buffer, contentType: res.headers.get('content-type') || contentType };
   }
 }

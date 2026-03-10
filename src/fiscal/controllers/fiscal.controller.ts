@@ -24,6 +24,7 @@ import { FocusNFeClientService, FocusNFeCnpjInfo } from '../focus-nfe/focus-nfe-
 import { PedidoDataService, TributacaoByProdutoRow, ContribuinteIcmsUpdate } from '../services/pedido-data.service';
 import { buildFocusNFePayload, validarPayloadSefaz } from '../focus-nfe/build-payload';
 import { RegraTributariaNaoEncontradaError } from '../types/fiscal.types';
+import { PDFDocument } from 'pdf-lib';
 
 @Controller('fiscal')
 export class FiscalController {
@@ -856,7 +857,7 @@ export class FiscalController {
     const tokensFromDb = empresa
       ? { homologacao: empresa.tokenHomologacao, producao: empresa.tokenProducao }
       : undefined;
-    const { body, contentType } = await this.focusClient.download(
+    const { buffer: xmlBuffer, contentType } = await this.focusClient.download(
       invoice.focus_id,
       'xml',
       cnpjEmitente,
@@ -867,8 +868,7 @@ export class FiscalController {
       'Content-Disposition',
       `attachment; filename="nfe-${invoice.chave_acesso ?? invoice.focus_id}.xml"`,
     );
-    const nodeStream = Readable.fromWeb(body as any);
-    nodeStream.pipe(res);
+    res.send(xmlBuffer);
   }
 
   @Post(':invoiceId/cancelar')
@@ -961,7 +961,7 @@ export class FiscalController {
     const tokensFromDb = empresa
       ? { homologacao: empresa.tokenHomologacao, producao: empresa.tokenProducao }
       : undefined;
-    const { body, contentType } = await this.focusClient.download(
+    const { buffer: pdfBuffer, contentType } = await this.focusClient.download(
       invoice.focus_id,
       'pdf',
       cnpjEmitente,
@@ -972,8 +972,163 @@ export class FiscalController {
       'Content-Disposition',
       `attachment; filename="nfe-${invoice.chave_acesso ?? invoice.focus_id}.pdf"`,
     );
-    const nodeStream = Readable.fromWeb(body as any);
-    nodeStream.pipe(res);
+    res.send(pdfBuffer);
+  }
+
+  @Post('batch/pdf')
+  async getBatchPdf(
+    @Body(new ValidationPipe({ whitelist: false, forbidNonWhitelisted: false })) body: Record<string, unknown>,
+    @Res() res: Response,
+  ): Promise<void> {
+    const invoiceIds = body.invoiceIds as string[];
+    console.log('--- BATCH PDF REQUEST ---', { invoiceIds });
+    if (!invoiceIds || !Array.isArray(invoiceIds) || invoiceIds.length === 0) {
+      console.log('Failing: invalid invoiceIds array');
+      res.status(HttpStatus.BAD_REQUEST).json({ message: 'Informe um array de invoiceIds.' });
+      return;
+    }
+
+    try {
+      const mergedPdf = await PDFDocument.create();
+      let pdfsMerged = 0;
+      const debugLogs: string[] = [];
+
+      for (const invoiceId of invoiceIds) {
+        debugLogs.push(`Buscando invoiceId: ${invoiceId}`);
+        const invoice = await this.supabase.findInvoiceById(invoiceId);
+        if (!invoice) {
+          debugLogs.push(`Invoice não encontrada: ${invoiceId}`);
+          continue;
+        }
+        if (!invoice.focus_id) {
+          debugLogs.push(`Invoice sem focus_id: ${invoiceId}`);
+          continue;
+        }
+
+        const empresa = await this.pedidoData.getEmpresa(invoice.empresa_id);
+        const cnpjEmitente = empresa?.cnpj ? String(empresa.cnpj).replace(/\D/g, '') : undefined;
+        const tokensFromDb = empresa
+          ? { homologacao: empresa.tokenHomologacao, producao: empresa.tokenProducao }
+          : undefined;
+
+        try {
+          // 1) Tentar usar PDF já salvo em Storage (mais rápido)
+          let pdfUrlToDownload = invoice.pdf_url || null;
+          if (!pdfUrlToDownload || pdfUrlToDownload.includes('focusnfe.com.br')) {
+            // 2) Se ainda não tiver PDF em Storage ou ainda apontar para Focus,
+            // buscar caminho_danfe / caminho_pdf_nota_fiscal na Focus NFe
+            const consulta = await this.focusClient.consultar(invoice.focus_id, cnpjEmitente, tokensFromDb);
+            const danfePath = (consulta as any).caminho_danfe || consulta.caminho_pdf_nota_fiscal;
+            if (!danfePath) {
+              debugLogs.push(`Sem caminho_danfe para invoiceId=${invoiceId}`);
+              continue;
+            }
+            pdfUrlToDownload = this.focusClient.buildFocusNFeUrl(danfePath);
+          }
+
+          const pdfRes = await fetch(pdfUrlToDownload);
+          if (!pdfRes.ok) {
+            const text = await pdfRes.text();
+            debugLogs.push(`Falha ao baixar PDF para invoiceId=${invoiceId}: ${pdfRes.status} ${pdfRes.statusText} - ${text.slice(0, 120)}`);
+            continue;
+          }
+
+          const arrayBuffer = await pdfRes.arrayBuffer();
+          const pdfBuffer = Buffer.from(arrayBuffer);
+
+          const pdfToMerge = await PDFDocument.load(pdfBuffer);
+          const copiedPages = await mergedPdf.copyPages(pdfToMerge, pdfToMerge.getPageIndices());
+          copiedPages.forEach((page) => mergedPdf.addPage(page));
+          pdfsMerged++;
+        } catch (e) {
+          debugLogs.push(`Erro processar ${invoiceId}: ${e instanceof Error ? e.message : String(e)}`);
+        }
+      }
+
+      if (pdfsMerged === 0) {
+        res.status(HttpStatus.BAD_REQUEST).json({ message: 'Nenhum PDF pôde ser gerado para os IDs informados (aguardando processamento?).', debug: debugLogs });
+        return;
+      }
+
+      const pdfBytes = await mergedPdf.save();
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="nfe-lote-${Date.now()}.pdf"`,
+      );
+      res.send(Buffer.from(pdfBytes));
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ message: 'Erro ao gerar PDF em lote.', detail: msg });
+    }
+  }
+
+  @Post(':invoiceId/save-pdf')
+  async savePdfManual(
+    @Param('invoiceId', ParseUUIDPipe) invoiceId: string,
+  ): Promise<{ url: string; message: string }> {
+    const invoice = await this.supabase.findInvoiceById(invoiceId);
+    if (!invoice) throw new NotFoundException('Nota fiscal não encontrada no sistema.');
+    if (!invoice.focus_id) throw new BadRequestException('Esta NFe ainda não possui ID da Sefaz/Focus.');
+    if (invoice.status !== 'AUTORIZADO') throw new BadRequestException('A NFe precisa estar AUTORIZADA para possuir PDF.');
+
+    const empresa = await this.pedidoData.getEmpresa(invoice.empresa_id);
+    const cnpjEmitente = empresa?.cnpj ? String(empresa.cnpj).replace(/\D/g, '') : undefined;
+    const tokensFromDb = empresa
+      ? { homologacao: empresa.tokenHomologacao, producao: empresa.tokenProducao }
+      : undefined;
+
+    try {
+      // Se já existe um PDF salvo em Storage (não é URL da FocusNFe), não salva novamente
+      if (invoice.pdf_url && !invoice.pdf_url.includes('focusnfe.com.br')) {
+        return {
+          url: invoice.pdf_url,
+          message: 'PDF já estava salvo no Storage.',
+        };
+      }
+
+      // 1. Tentar achar chave de acesso e URL do PDF
+      let chaveParaNome = invoice.chave_acesso;
+      let pdfUrlToDownload = invoice.pdf_url;
+
+      // Se a URL do PDF não estiver presente ou já apontar para o nosso Supabase,
+      // buscamos a URL original (caminho_danfe) consultando a Focus NFe.
+      if (!pdfUrlToDownload || !pdfUrlToDownload.includes('focusnfe.com.br')) {
+        const consulta = await this.focusClient.consultar(invoice.focus_id, cnpjEmitente, tokensFromDb);
+        if (consulta) {
+          if (consulta.chave_nfe) chaveParaNome = consulta.chave_nfe;
+          const danfePath = (consulta as any).caminho_danfe || consulta.caminho_pdf_nota_fiscal;
+          if (danfePath) {
+            pdfUrlToDownload = this.focusClient.buildFocusNFeUrl(danfePath);
+          }
+        }
+        if (!pdfUrlToDownload || !pdfUrlToDownload.includes('focusnfe.com.br')) {
+          throw new BadRequestException('Não foi possível obter a URL do PDF na Focus NFe para fazer o download.');
+        }
+      }
+
+      // 2. Download do PDF usando a URL estática
+      const pdfRes = await fetch(pdfUrlToDownload);
+      if (!pdfRes.ok) throw new Error(`Falha ao baixar PDF da Sefaz: ${pdfRes.statusText}`);
+      const pdfBuffer = Buffer.from(await pdfRes.arrayBuffer());
+
+      const basename = chaveParaNome || invoice.focus_id;
+      const ano = new Date(invoice.created_at).getFullYear().toString();
+      const fileName = `${ano}/NFe${basename}.pdf`;
+
+      // 3. Upload
+      const publicUrl = await this.supabase.uploadPdfToStorage(pdfBuffer, fileName);
+
+      // 4. Update BD
+      await this.supabase.updateInvoiceStatus(invoiceId, { status: invoice.status, pdf_url: publicUrl });
+
+      return { url: publicUrl, message: 'PDF salvo no Storage com sucesso.' };
+    } catch (e) {
+      if (e instanceof Error) {
+        throw new InternalServerErrorException(`Falha ao salvar PDF: ${e.message}`);
+      }
+      throw new InternalServerErrorException('Falha desconhecida ao salvar PDF.');
+    }
   }
 
   /**
