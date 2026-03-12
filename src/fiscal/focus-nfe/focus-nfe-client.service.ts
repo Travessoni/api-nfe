@@ -62,6 +62,17 @@ export interface FocusNFeConsultaResult {
   [key: string]: unknown;
 }
 
+/** Resposta da API Focus NFe POST /v2/nfe/{ref}/carta_correcao */
+export interface FocusNFeCartaCorrecaoResult {
+  status: string;
+  status_sefaz?: string;
+  mensagem_sefaz?: string;
+  caminho_xml_carta_correcao?: string;
+  caminho_pdf_carta_correcao?: string;
+  numero_carta_correcao?: number;
+  [key: string]: unknown;
+}
+
 /** Resposta da API Focus NFe GET /v2/cnpjs/{cnpj} */
 export interface FocusNFeCnpjInfo {
   inscricao_estadual?: string;
@@ -250,6 +261,33 @@ export class FocusNFeClientService {
       undefined,
       cnpjEmitente ? normalizarCnpj(cnpjEmitente) : undefined,
       tokensFromDb,
+    );
+  }
+
+  /**
+   * Emite carta de correção para NFe autorizada.
+   * POST /v2/nfe/{REFERENCIA}/carta_correcao
+   */
+  async cartaCorrecao(
+    referencia: string,
+    correcao: string,
+    dataEvento?: string,
+    cnpjEmitente?: string,
+    tokensFromDb?: FocusNFeTokensFromDb | null,
+  ): Promise<FocusNFeCartaCorrecaoResult> {
+    const refEnc = encodeURIComponent(referencia);
+    const body: Record<string, unknown> = {
+      correcao: correcao?.trim(),
+    };
+    if (dataEvento && dataEvento.trim() !== '') {
+      body.data_evento = dataEvento.trim();
+    }
+    return this.request<FocusNFeCartaCorrecaoResult>(
+      'POST',
+      `/v2/nfe/${refEnc}/carta_correcao`,
+      body,
+      cnpjEmitente ? normalizarCnpj(cnpjEmitente) : undefined,
+      tokensFromDb ?? undefined,
     );
   }
 

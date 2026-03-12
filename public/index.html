@@ -2561,6 +2561,36 @@
     </div>
   </div>
 
+  <div class="modal-overlay" id="modalCartaCorrecao">
+    <div class="modal modal-chamada">
+      <div class="modal-header">
+        <h3>Nota fiscal eletrônica - Carta de correção</h3>
+        <button type="button" class="modal-close" id="modalCartaCorrecaoClose" aria-label="Fechar">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div id="modalCartaCorrecaoMessage" class="message" style="display:none;"></div>
+        <label for="cartaCorrecaoTexto" style="display:block; font-weight:500; margin-bottom:8px;">
+          Descrição da correção
+        </label>
+        <p style="margin-top:0; margin-bottom:8px; font-size:13px; color:#555;">
+          A correção mais recente substitui as anteriores. Descreva de forma clara o que deve ser corrigido
+          na nota fiscal. Mínimo de 15 e máximo de 1000 caracteres.
+        </p>
+        <textarea id="cartaCorrecaoTexto" rows="6" style="width:100%; resize:vertical;"
+          placeholder="Ex.: Correção da informação de endereço do destinatário..."></textarea>
+        <div style="margin-top:4px; text-align:right; font-size:12px; color:#666;">
+          <span id="cartaCorrecaoCount">0</span> / 1000
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" id="btnCartaCorrecaoCancelar">Cancelar</button>
+        <button type="button" class="btn-primary" id="btnCartaCorrecaoEnviar">Enviar</button>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-overlay" id="modalAdicionarNF">
     <div class="modal modal-nf-full">
       <div class="modal-header">
@@ -3754,9 +3784,14 @@
           list.forEach(function (s) {
             const tr = document.createElement('tr');
             const sitClass = (s.situacao || '').toUpperCase().replace(/\s/g, '_');
+            let descricaoHtml = (s.descricao || '-');
+            if (s.pdf_url) {
+              descricaoHtml +=
+                '<br><a href="' + s.pdf_url + '" target="_blank" rel="noopener" class="link-acao-carta">Ver PDF</a>';
+            }
             tr.innerHTML =
               '<td>' + (s.data || '-') + '</td>' +
-              '<td>' + (s.descricao || '-') + '</td>' +
+              '<td>' + descricaoHtml + '</td>' +
               '<td><span class="situacao-badge ' + sitClass + '">' + (s.situacao || '-') + '</span></td>';
             tbody.appendChild(tr);
           });
@@ -3836,6 +3871,24 @@
 
     function handleNfeOpcao(action, invoiceId) {
       const base = window.location.origin;
+      // #region agent log
+      fetch('http://127.0.0.1:7254/ingest/b554fdf5-5c4e-4630-aab2-792c1f82450d', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Debug-Session-Id': '5d3f87',
+        },
+        body: JSON.stringify({
+          sessionId: '5d3f87',
+          runId: 'pre-fix',
+          hypothesisId: 'H1',
+          location: 'public/index.html:handleNfeOpcao',
+          message: 'handleNfeOpcao called',
+          data: { action: action, invoiceId: invoiceId },
+          timestamp: Date.now(),
+        }),
+      }).catch(function () { });
+      // #endregion agent log
       switch (action) {
         case 'enviar':
           if (!confirm('Deseja enviar a NF-e agora?')) return;
@@ -3848,6 +3901,24 @@
             .catch(function (e) { showMessage('msg', 'Erro: ' + (e.message || 'ao enviar'), 'error'); });
           break;
         case 'cancelar':
+          // #region agent log
+          fetch('http://127.0.0.1:7254/ingest/b554fdf5-5c4e-4630-aab2-792c1f82450d', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Debug-Session-Id': '5d3f87',
+            },
+            body: JSON.stringify({
+              sessionId: '5d3f87',
+              runId: 'pre-fix',
+              hypothesisId: 'H2',
+              location: 'public/index.html:handleNfeOpcao',
+              message: 'cancel flow started',
+              data: { action: action, invoiceId: invoiceId },
+              timestamp: Date.now(),
+            }),
+          }).catch(function () { });
+          // #endregion agent log
           var justificativa = prompt('Justificativa do cancelamento (obrigatório, mín. 15 caracteres):');
           if (justificativa && justificativa.trim().length >= 15) {
             fetch(API + '/fiscal/' + invoiceId + '/cancelar', {
@@ -3867,7 +3938,7 @@
           showMessage('msg', 'Outras opções de NF-e em desenvolvimento.', 'info');
           break;
         case 'carta-correcao':
-          showMessage('msg', 'Carta de correção em desenvolvimento.', 'info');
+          openModalCartaCorrecao(invoiceId);
           break;
         case 'nfe-complementar':
           showMessage('msg', 'NFe complementar em desenvolvimento.', 'info');
@@ -5337,6 +5408,111 @@
         .catch(function () { });
     });
 
+    let currentCartaCorrecaoInvoiceId = null;
+
+    function openModalCartaCorrecao(invoiceId) {
+      currentCartaCorrecaoInvoiceId = invoiceId;
+      const overlay = document.getElementById('modalCartaCorrecao');
+      const textarea = document.getElementById('cartaCorrecaoTexto');
+      const msgEl = document.getElementById('modalCartaCorrecaoMessage');
+      const countEl = document.getElementById('cartaCorrecaoCount');
+      if (!overlay || !textarea || !msgEl || !countEl) return;
+      textarea.value = '';
+      countEl.textContent = '0';
+      msgEl.style.display = 'none';
+      msgEl.textContent = '';
+      overlay.classList.add('open');
+      textarea.focus();
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+
+    (function bindCartaCorrecaoModal() {
+      const overlay = document.getElementById('modalCartaCorrecao');
+      const closeBtn = document.getElementById('modalCartaCorrecaoClose');
+      const cancelBtn = document.getElementById('btnCartaCorrecaoCancelar');
+      const sendBtn = document.getElementById('btnCartaCorrecaoEnviar');
+      const textarea = document.getElementById('cartaCorrecaoTexto');
+      const msgEl = document.getElementById('modalCartaCorrecaoMessage');
+      const countEl = document.getElementById('cartaCorrecaoCount');
+      if (!overlay || !textarea || !msgEl || !countEl || !sendBtn) return;
+
+      function closeModal() {
+        overlay.classList.remove('open');
+        currentCartaCorrecaoInvoiceId = null;
+      }
+
+      textarea.addEventListener('input', function () {
+        const val = textarea.value || '';
+        if (val.length > 1000) {
+          textarea.value = val.slice(0, 1000);
+        }
+        countEl.textContent = textarea.value.length.toString();
+      });
+
+      if (closeBtn) closeBtn.addEventListener('click', closeModal);
+      if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+      overlay.addEventListener('click', function (e) {
+        if (e.target === overlay) {
+          closeModal();
+        }
+      });
+
+      sendBtn.addEventListener('click', function () {
+        const texto = (textarea.value || '').trim();
+        msgEl.style.display = 'none';
+        msgEl.textContent = '';
+        msgEl.className = 'message';
+
+        if (!currentCartaCorrecaoInvoiceId) {
+          msgEl.textContent = 'Nota fiscal não identificada para a carta de correção.';
+          msgEl.classList.add('error');
+          msgEl.style.display = 'block';
+          return;
+        }
+        if (texto.length < 15 || texto.length > 1000) {
+          msgEl.textContent = 'Descreva a correção com pelo menos 15 e no máximo 1000 caracteres.';
+          msgEl.classList.add('error');
+          msgEl.style.display = 'block';
+          return;
+        }
+
+        sendBtn.disabled = true;
+        fetch(API + '/fiscal/' + currentCartaCorrecaoInvoiceId + '/carta-correcao', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ correcao: texto }),
+        })
+          .then(function (r) {
+            return r.json().then(function (d) { return { ok: r.ok, data: d }; });
+          })
+          .then(function (res) {
+            if (res.ok) {
+              const m = res.data && (res.data.message || res.data.mensagem_sefaz || 'Carta de correção enviada.');
+              showMessage('msg', m, 'success');
+              var pdfUrl = res.data && res.data.pdf_url;
+              if (pdfUrl && typeof pdfUrl === 'string') {
+                window.open(pdfUrl, '_blank');
+              }
+              closeModal();
+              loadInvoices();
+            } else {
+              const errMsg = res.data && (res.data.message || res.data.mensagem_sefaz || res.data.detail);
+              msgEl.textContent = errMsg || 'Erro ao enviar carta de correção.';
+              msgEl.classList.add('error');
+              msgEl.style.display = 'block';
+            }
+          })
+          .catch(function (e) {
+            msgEl.textContent = 'Erro de rede ao enviar carta de correção: ' + (e.message || e);
+            msgEl.classList.add('error');
+            msgEl.style.display = 'block';
+          })
+          .finally(function () {
+            sendBtn.disabled = false;
+          });
+      });
+    })();
+
     async function emitir() {
       const pedidoId = document.getElementById('pedidoId').value.trim();
       const empresaId = document.getElementById('empresaId').value.trim();
@@ -5534,35 +5710,7 @@
       if (typeof NfeSelectionManager !== 'undefined') NfeSelectionManager.syncTableState();
     }
 
-    function handleNfeOpcao(action, id) {
-      if (action === 'gerar-devolucao' || action === 'clonar' || action === 'clonar-entrada') {
-        showMessage('msg', 'Ação "' + action + '" em desenvolvimento.', 'info');
-      } else if (action === 'carta-correcao') {
-        showMessage('msg', 'Ação "carta-correcao" em desenvolvimento.', 'info');
-      } else if (action === 'nfe-complementar') {
-        showMessage('msg', 'Ação "nfe-complementar" em desenvolvimento.', 'info');
-      } else if (action === 'outras-opcoes') {
-        showMessage('msg', 'Outras opções de NF-e em desenvolvimento.', 'info');
-      } else if (action === 'ver-json') {
-        fetch(API + '/fiscal/' + id)
-          .then(function (res) { return res.json(); })
-          .then(function (data) {
-            var payload = data.payload_json || {};
-            openModalPreviewChamada(payload);
-          })
-          .catch(function (e) { showMessage('msg', 'Erro ao buscar notas fiscais: ' + e.message, 'error'); });
-      } else if (action === 'enviar') {
-        enviarNfe(id);
-      } else if (action === 'cancelar') {
-        cancelNfe(id);
-      } else if (action === 'delete') {
-        if (confirm('Tem certeza que deseja excluir esta NFe?')) {
-          deleteInvoice(id);
-        }
-      } else if (action === 'save-pdf') {
-        savePdfManual(id);
-      }
-    }
+    // usa a função handleNfeOpcao global definida acima (com switch completo)
 
     function renderPagination() {
       const container = document.getElementById('paginationContainer');

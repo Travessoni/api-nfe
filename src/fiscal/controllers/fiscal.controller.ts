@@ -20,7 +20,7 @@ import { Readable } from 'stream';
 import { FiscalEmissaoService } from '../services/fiscal-emissao.service';
 import { FiscalSupabaseService } from '../services/fiscal-supabase.service';
 import { FiscalSyncService } from '../services/fiscal-sync.service';
-import { FocusNFeClientService, FocusNFeCnpjInfo } from '../focus-nfe/focus-nfe-client.service';
+import { FocusNFeClientService, FocusNFeCnpjInfo, FocusNFeCartaCorrecaoResult } from '../focus-nfe/focus-nfe-client.service';
 import { PedidoDataService, TributacaoByProdutoRow, ContribuinteIcmsUpdate } from '../services/pedido-data.service';
 import { buildFocusNFePayload, validarPayloadSefaz } from '../focus-nfe/build-payload';
 import { RegraTributariaNaoEncontradaError } from '../types/fiscal.types';
@@ -770,12 +770,18 @@ export class FiscalController {
   @Get(':invoiceId/situacoes')
   async getSituacoes(
     @Param('invoiceId', ParseUUIDPipe) invoiceId: string,
-  ): Promise<{ data: string; descricao: string; situacao: string }[]> {
+  ): Promise<{ data: string; descricao: string; situacao: string; pdf_url?: string | null; xml_url?: string | null }[]> {
     const invoice = await this.supabase.findInvoiceById(invoiceId);
     if (!invoice) throw new NotFoundException('Nota fiscal não encontrada');
-    const situacoes: { data: string; descricao: string; situacao: string }[] = [];
-    const push = (data: string, descricao: string, situacao: string) => {
-      situacoes.push({ data, descricao: descricao || '-', situacao: situacao || '-' });
+    const situacoes: { data: string; descricao: string; situacao: string; pdf_url?: string | null; xml_url?: string | null }[] = [];
+    const push = (data: string, descricao: string, situacao: string, extra?: { pdf_url?: string | null; xml_url?: string | null }) => {
+      situacoes.push({
+        data,
+        descricao: descricao || '-',
+        situacao: situacao || '-',
+        pdf_url: extra?.pdf_url ?? null,
+        xml_url: extra?.xml_url ?? null,
+      });
     };
     const fmtDate = (d: string | null) =>
       d ? new Date(d).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'medium' }) : '-';
@@ -785,7 +791,17 @@ export class FiscalController {
       const desc =
         (p.mensagem_sefaz as string) || (p.mensagem as string) || (p.mensagem_rejeicao as string) || ev.tipo_evento || '-';
       const sit = (p.status as string) || (p.status_sefaz as string) || ev.tipo_evento || '-';
-      push(fmtDate(ev.created_at), desc, String(sit).toUpperCase());
+      let pdfUrl: string | null = null;
+      let xmlUrl: string | null = null;
+      const caminhoXml = (p.caminho_xml_carta_correcao as string) || (p.caminho_xml_nota_fiscal as string) || '';
+      const caminhoPdf = (p.caminho_pdf_carta_correcao as string) || (p.caminho_pdf_nota_fiscal as string) || (p.caminho_danfe as string) || '';
+      if (caminhoXml) {
+        xmlUrl = this.focusClient.buildFocusNFeUrl(caminhoXml);
+      }
+      if (caminhoPdf) {
+        pdfUrl = this.focusClient.buildFocusNFeUrl(caminhoPdf);
+      }
+      push(fmtDate(ev.created_at), desc, String(sit).toUpperCase(), { pdf_url: pdfUrl, xml_url: xmlUrl });
     }
     push(
       fmtDate(invoice.updated_at ?? invoice.created_at),
@@ -917,6 +933,94 @@ export class FiscalController {
     throw new InternalServerErrorException(
       (res as { mensagem?: string }).mensagem ?? 'Erro ao cancelar na SEFAZ.',
     );
+  }
+
+  /**
+   * Emite carta de correção (CCe) para NFe autorizada.
+   * POST /fiscal/:invoiceId/carta-correcao
+   */
+  @Post(':invoiceId/carta-correcao')
+  async cartaCorrecao(
+    @Param('invoiceId', ParseUUIDPipe) invoiceId: string,
+    @Body() body: { correcao?: string; data_evento?: string },
+  ): Promise<{
+    message: string;
+    status: string;
+    status_sefaz?: string;
+    mensagem_sefaz?: string;
+    numero_carta_correcao?: number;
+    xml_url?: string | null;
+    pdf_url?: string | null;
+  }> {
+    const invoice = await this.supabase.findInvoiceById(invoiceId);
+    if (!invoice) throw new NotFoundException('Nota fiscal não encontrada');
+    if (invoice.status !== 'AUTORIZADO') {
+      throw new BadRequestException('Só é possível emitir carta de correção para NFe autorizada.');
+    }
+    if (!invoice.focus_id) {
+      throw new BadRequestException('NFe sem focus_id (aguarde processamento antes de emitir carta de correção).');
+    }
+
+    const correcao = body?.correcao?.trim() ?? '';
+    if (!correcao || correcao.length < 15 || correcao.length > 1000) {
+      throw new BadRequestException('Descrição da correção deve ter entre 15 e 1000 caracteres.');
+    }
+
+    const empresa = await this.pedidoData.getEmpresa(invoice.empresa_id);
+    if (!empresa) {
+      throw new BadRequestException('Empresa emissora não encontrada para esta NFe.');
+    }
+    const cnpjEmitente = empresa.cnpj ? String(empresa.cnpj).replace(/\D/g, '') : undefined;
+    const tokensFromDb = {
+      homologacao: (empresa as Record<string, unknown>).tokenHomologacao as string | undefined,
+      producao: (empresa as Record<string, unknown>).tokenProducao as string | undefined,
+    };
+
+    let resCCE: FocusNFeCartaCorrecaoResult;
+    try {
+      resCCE = await this.focusClient.cartaCorrecao(
+        invoice.focus_id,
+        correcao,
+        body?.data_evento,
+        cnpjEmitente,
+        tokensFromDb,
+      );
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      throw new InternalServerErrorException(`Erro ao enviar carta de correção para a Focus NFe: ${msg}`);
+    }
+
+    await this.supabase.createEvento(invoiceId, 'carta_correcao', {
+      ...resCCE,
+      correcao_enviada: correcao,
+    });
+
+    const status = (resCCE.status ?? '').toString();
+    const statusSefaz = resCCE.status_sefaz;
+    const mensagemSefaz = resCCE.mensagem_sefaz;
+
+    const isAutorizado = status === 'autorizado';
+    const baseMessage = isAutorizado
+      ? 'Carta de correção autorizada pela SEFAZ.'
+      : 'Carta de correção não autorizada pela SEFAZ.';
+    const detail = mensagemSefaz ? ` Detalhe: ${mensagemSefaz}` : '';
+
+    const xmlUrl = resCCE.caminho_xml_carta_correcao
+      ? this.focusClient.buildFocusNFeUrl(resCCE.caminho_xml_carta_correcao)
+      : null;
+    const pdfUrl = resCCE.caminho_pdf_carta_correcao
+      ? this.focusClient.buildFocusNFeUrl(resCCE.caminho_pdf_carta_correcao)
+      : null;
+
+    return {
+      message: `${baseMessage}${detail}`,
+      status,
+      status_sefaz: statusSefaz,
+      mensagem_sefaz: mensagemSefaz,
+      numero_carta_correcao: resCCE.numero_carta_correcao,
+      xml_url: xmlUrl,
+      pdf_url: pdfUrl,
+    };
   }
 
   @Post(':invoiceId/clonar')
