@@ -1,0 +1,13 @@
+node_modules
+dist
+.git
+.env
+.env.*
+.cursor
+.agent
+.agents
+*.md
+*.pdf
+*.mjs
+test-*
+exemplos
