@@ -23,6 +23,9 @@ RUN npm ci --omit=dev
 # Copiar dist compilado do builder
 COPY --from=builder /app/dist ./dist
 
+# Copiar arquivos estáticos do painel
+COPY --from=builder /app/public ./public
+
 EXPOSE 3000
 
 CMD ["node", "dist/main"]
