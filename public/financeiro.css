@@ -251,7 +251,9 @@ body.body-scroll-lock { overflow: hidden !important }
 .sidebar-user {
   padding: 12px 16px; border-top: 1px solid var(--border-default);
   display: flex; align-items: center; gap: 10px;
+  cursor: pointer; transition: background .15s;
 }
+.sidebar-user:hover { background: var(--bg-hover) }
 
 .sidebar-avatar {
   width: 32px; height: 32px; border-radius: 50%;
@@ -460,6 +462,47 @@ tbody tr:last-child td { border-bottom: none }
   padding: 16px 24px; border-top: 1px solid var(--border-default);
   display: flex; justify-content: flex-end; gap: 10px;
 }
+
+
+/* =========================
+   MODAL: PERFIL
+   ========================= */
+
+.perfil-section { margin-bottom: 20px }
+.perfil-label { display: block; font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px }
+
+.perfil-avatar {
+  width: 64px; height: 64px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; font-weight: 700; color: #fff;
+  background: #6366F1;
+}
+
+.perfil-field {
+  background: var(--bg-hover); color: var(--text-primary);
+  padding: 10px 14px; border-radius: 8px; font-size: 14px;
+}
+
+.perfil-theme-toggle {
+  display: inline-flex; border-radius: 10px; overflow: hidden;
+  border: 1px solid var(--border-default); background: var(--bg-hover);
+}
+.perfil-theme-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 48px; height: 40px; border: none; background: transparent;
+  color: var(--text-muted); cursor: pointer; transition: all .15s;
+}
+.perfil-theme-btn svg { width: 18px; height: 18px }
+.perfil-theme-btn.active {
+  background: var(--bg-card); color: var(--text-primary);
+  box-shadow: 0 1px 3px rgba(0,0,0,.12);
+}
+.perfil-theme-label { display: block; margin-top: 6px; font-size: 13px; color: var(--text-muted) }
+
+.perfil-logout-btn {
+  gap: 8px; font-size: 14px; font-weight: 500;
+}
+.perfil-logout-btn svg { width: 18px; height: 18px }
 
 
 /* =========================

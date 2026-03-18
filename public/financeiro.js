@@ -53,6 +53,9 @@ function cacheDom() {
     'drOverlay', 'drStartLabel', 'drStartDays', 'drEndLabel', 'drEndDays',
     'drRangeDisplay', 'drMonthSel', 'drMonthYear', 'drMonthGrid',
     'themeToggleBtn', 'themeIcon', 'themeLabel',
+    'perfilAvatar', 'perfilNome', 'perfilEmail',
+    'perfilThemeDark', 'perfilThemeLight', 'perfilThemeLabel',
+    'perfilLogoutBtn', 'sidebarUser',
     'catCounter',
     'dashMonthLabel', 'dashPrevMonth', 'dashNextMonth',
     'dashSaldoInicial', 'dashSaldoAtual', 'dashSaldoPrevisto',
@@ -154,6 +157,45 @@ function updateThemeUI() {
   if (DOM.themeLabel) {
     DOM.themeLabel.textContent = isDark ? 'Modo claro' : 'Modo escuro';
   }
+}
+
+
+// ===== PROFILE MODAL =====
+function openPerfilModal() {
+  if (!currentUser) return;
+  const initials = (currentUser.nome || '??').split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
+  DOM.perfilAvatar.textContent = initials;
+  if (currentUser.corAvatar) DOM.perfilAvatar.style.background = currentUser.corAvatar;
+  DOM.perfilNome.textContent = currentUser.nome || '—';
+  DOM.perfilEmail.textContent = currentUser.email || '—';
+  updatePerfilThemeUI();
+  openModal('modalPerfil');
+}
+
+function updatePerfilThemeUI() {
+  const isDark = (document.documentElement.getAttribute('data-theme') || 'dark') === 'dark';
+  if (DOM.perfilThemeDark) DOM.perfilThemeDark.classList.toggle('active', isDark);
+  if (DOM.perfilThemeLight) DOM.perfilThemeLight.classList.toggle('active', !isDark);
+  if (DOM.perfilThemeLabel) DOM.perfilThemeLabel.textContent = isDark ? 'Modo escuro' : 'Modo claro';
+}
+
+function setThemeFromPerfil(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem(THEME_KEY, theme);
+  updateThemeUI();
+  updatePerfilThemeUI();
+}
+
+async function handleLogout() {
+  await sb.auth.signOut();
+  window.location.href = 'https://www.betelplus.com/entrar';
+}
+
+function initPerfilModal() {
+  if (DOM.sidebarUser) DOM.sidebarUser.addEventListener('click', openPerfilModal);
+  if (DOM.perfilThemeDark) DOM.perfilThemeDark.addEventListener('click', () => setThemeFromPerfil('dark'));
+  if (DOM.perfilThemeLight) DOM.perfilThemeLight.addEventListener('click', () => setThemeFromPerfil('light'));
+  if (DOM.perfilLogoutBtn) DOM.perfilLogoutBtn.addEventListener('click', handleLogout);
 }
 
 
@@ -1187,6 +1229,7 @@ function selectDrMonth(m) {
   initCategorias();
   initDrPresets();
   updateDrLabel();
+  initPerfilModal();
 
   // Auth listeners
   DOM.loginBtn.addEventListener('click', handleLogin);
