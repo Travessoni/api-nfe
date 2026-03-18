@@ -611,7 +611,7 @@ export class FinancialService implements OnModuleDestroy {
     const byCategory: Record<string, { nome: string; cor: string; total: number }> = {};
 
     for (const r of data ?? []) {
-      const cat = r.financeiro_categorias as Record<string, unknown> | null;
+      const cat = (r.financeiro_categorias as unknown) as Record<string, unknown> | null;
       const key = cat ? (cat.id as string) : '__sem_categoria__';
       const nome = cat ? (cat.nome as string) : 'Sem categoria';
       const cor = cat ? (cat.cor as string) || '#3F3F46' : '#3F3F46';
