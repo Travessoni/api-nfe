@@ -10,6 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="financeiro.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
   <!-- AUTH GATE -->
@@ -36,7 +37,11 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
       </div>
       <div class="sidebar-group-items open">
-        <a class="sidebar-item active" href="#transacoes" data-page="transacoes">
+        <a class="sidebar-item active" href="#dashboard" data-page="dashboard">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="4" rx="1"/><rect x="14" y="10" width="7" height="11" rx="1"/><rect x="3" y="13" width="7" height="8" rx="1"/></svg>
+          Dashboard
+        </a>
+        <a class="sidebar-item" href="#transacoes" data-page="transacoes">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
           Caixas e bancos
         </a>
@@ -70,8 +75,123 @@
 
   <!-- MAIN CONTENT -->
   <main class="main" id="mainContent" style="display:none">
+    <!-- PAGE: DASHBOARD -->
+    <div id="pageDashboard" class="page-view">
+      <div class="page-header">
+        <div class="page-header-left"><h1>Dashboard</h1></div>
+        <div class="page-header-right">
+          <div class="dash-month-nav">
+            <button class="btn btn-ghost dash-month-btn" id="dashPrevMonth">&laquo;</button>
+            <span class="dash-month-label" id="dashMonthLabel">—</span>
+            <button class="btn btn-ghost dash-month-btn" id="dashNextMonth">&raquo;</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Linha 1: Saldos | Evolução despesas | Alertas -->
+      <div class="dash-row dash-row-3">
+        <div class="dash-card dash-saldos" id="dashSaldos">
+          <div class="dash-saldo-item">
+            <span class="dash-saldo-icon dash-saldo-icon-green">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+            </span>
+            <div class="dash-saldo-info">
+              <div class="dash-saldo-value" id="dashSaldoInicial">R$ 0,00</div>
+              <div class="dash-saldo-label">Inicial</div>
+            </div>
+          </div>
+          <div class="dash-saldo-item">
+            <span class="dash-saldo-icon dash-saldo-icon-blue">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>
+            </span>
+            <div class="dash-saldo-info">
+              <div class="dash-saldo-value" id="dashSaldoAtual">R$ 0,00</div>
+              <div class="dash-saldo-label">Saldo atual</div>
+            </div>
+          </div>
+          <div class="dash-saldo-item">
+            <span class="dash-saldo-icon dash-saldo-icon-gray">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </span>
+            <div class="dash-saldo-info">
+              <div class="dash-saldo-value" id="dashSaldoPrevisto">R$ 0,00</div>
+              <div class="dash-saldo-label">Previsto</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="dash-card dash-chart-card">
+          <div class="dash-card-title">Evolução das despesas</div>
+          <canvas id="dashChartEvolucao"></canvas>
+        </div>
+
+        <div class="dash-card dash-alertas-card">
+          <div class="dash-alertas-tabs">
+            <button class="dash-alertas-tab active" data-tipo="despesa">Despesas</button>
+            <button class="dash-alertas-tab" data-tipo="receita">Receitas</button>
+          </div>
+          <div class="dash-alertas-body" id="dashAlertasBody">
+            <svg class="dash-alertas-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <p class="dash-alertas-text" id="dashAlertasText">Carregando...</p>
+            <button class="btn btn-ghost dash-alertas-btn" id="dashAlertasVerificar">Verificar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Linha 2: Visão Geral | Despesas por categoria -->
+      <div class="dash-row dash-row-2">
+        <div class="dash-visao-geral">
+          <div class="dash-card-title" style="margin-bottom:12px">Visão Geral</div>
+          <div class="dash-visao-grid">
+            <div class="dash-visao-card dash-visao-blue">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18"/><path d="M3 10h18"/><path d="M5 6l7-3 7 3"/><path d="M4 10v11"/><path d="M20 10v11"/><path d="M8 14v4"/><path d="M12 14v4"/><path d="M16 14v4"/></svg>
+              <div class="dash-visao-value" id="dashVisaoContas">R$ 0,00</div>
+              <div class="dash-visao-label">Contas</div>
+            </div>
+            <div class="dash-visao-card dash-visao-green">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              <div class="dash-visao-value" id="dashVisaoReceitas">R$ 0,00</div>
+              <div class="dash-visao-label">Receitas</div>
+            </div>
+            <div class="dash-visao-card dash-visao-red">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              <div class="dash-visao-value" id="dashVisaoDespesas">R$ 0,00</div>
+              <div class="dash-visao-label">Despesas</div>
+            </div>
+            <div class="dash-visao-card dash-visao-orange">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 16V4m0 0L3 8m4-4l4 4"/><path d="M17 8v12m0 0l4-4m-4 4l-4-4"/></svg>
+              <div class="dash-visao-value" id="dashVisaoTransferencias">R$ 0,00</div>
+              <div class="dash-visao-label">Transferências</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="dash-card dash-cat-card">
+          <div class="dash-card-title">Despesas por categoria</div>
+          <div class="dash-cat-chart-wrap">
+            <canvas id="dashChartCategorias"></canvas>
+            <div class="dash-cat-center" id="dashCatCenter">R$ 0</div>
+          </div>
+          <div class="dash-cat-legenda" id="dashCatLegenda"></div>
+        </div>
+      </div>
+
+      <!-- Linha 3: Tabela contas -->
+      <div class="dash-row">
+        <div class="dash-card" style="padding:0">
+          <div class="dash-card-title" style="padding:16px 20px 12px">Contas</div>
+          <div class="table-wrap" style="border:none;border-radius:0">
+            <table>
+              <thead><tr><th>Descrição</th><th>Receitas</th><th>Despesas</th><th>Saldo</th><th>Previsto</th></tr></thead>
+              <tbody id="dashContasBody"><tr><td colspan="5"><div class="loading-state">Carregando...</div></td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- PAGE: TRANSACOES (Caixas e bancos) -->
-    <div id="pageTransacoes" class="page-view">
+    <div id="pageTransacoes" class="page-view" style="display:none">
       <div class="page-header">
         <div class="page-header-left">
           <h1>Caixas e bancos</h1>

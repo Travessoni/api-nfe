@@ -12,13 +12,21 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ===== STATE =====
 let currentUser = null;
-let currentPage = 'transacoes';
+let currentPage = 'dashboard';
 let lancPage = 1;
 const lancLimit = 20;
 let currentTab = 'all';
 let instituicoes = [];
 let categorias = [];
 
+
+// ===== DASHBOARD STATE =====
+const _dashNow = new Date();
+let dashMonth = _dashNow.getFullYear() + '-' + String(_dashNow.getMonth() + 1).padStart(2, '0');
+let dashController = null;
+let dashChartEvolucao = null;
+let dashChartCategorias = null;
+let dashAlertaTipo = 'despesa';
 
 // ===== ABORT CONTROLLERS (cancel stale requests) =====
 let lancController = null;
@@ -46,6 +54,12 @@ function cacheDom() {
     'drRangeDisplay', 'drMonthSel', 'drMonthYear', 'drMonthGrid',
     'themeToggleBtn', 'themeIcon', 'themeLabel',
     'catCounter',
+    'dashMonthLabel', 'dashPrevMonth', 'dashNextMonth',
+    'dashSaldoInicial', 'dashSaldoAtual', 'dashSaldoPrevisto',
+    'dashChartEvolucao', 'dashChartCategorias',
+    'dashAlertasBody', 'dashAlertasText', 'dashAlertasVerificar',
+    'dashVisaoContas', 'dashVisaoReceitas', 'dashVisaoDespesas', 'dashVisaoTransferencias',
+    'dashCatCenter', 'dashCatLegenda', 'dashContasBody',
   ];
   ids.forEach(id => { DOM[id] = document.getElementById(id); });
 }
@@ -193,6 +207,7 @@ function initNavigation() {
       document.querySelectorAll('.page-view').forEach(p => p.style.display = 'none');
       const pageId = 'page' + currentPage.charAt(0).toUpperCase() + currentPage.slice(1);
       document.getElementById(pageId).style.display = 'block';
+      if (currentPage === 'dashboard') loadDashboard();
       if (currentPage === 'contas') loadContas();
       if (currentPage === 'categorias') loadCategoriasPage();
     });
@@ -203,8 +218,8 @@ function initNavigation() {
 // ===== DATA LOADING =====
 async function loadAll() {
   await Promise.all([loadInstituicoes(), loadCategorias()]);
-  loadLancamentos();
-  loadResumo();
+  if (currentPage === 'dashboard') loadDashboard();
+  else { loadLancamentos(); loadResumo(); }
 }
 
 async function loadInstituicoes() {
@@ -709,6 +724,232 @@ async function deleteCategoria(id) {
 
 
 // ================================================================
+//  DASHBOARD
+// ================================================================
+
+function initDashboard() {
+  DOM.dashPrevMonth.addEventListener('click', () => { dashNavMonth(-1); });
+  DOM.dashNextMonth.addEventListener('click', () => { dashNavMonth(1); });
+  updateDashMonthLabel();
+
+  // Alertas tabs
+  document.querySelectorAll('.dash-alertas-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.dash-alertas-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      dashAlertaTipo = tab.dataset.tipo;
+      loadDashAlertas();
+    });
+  });
+
+  // Verificar button → go to transacoes
+  DOM.dashAlertasVerificar.addEventListener('click', () => {
+    const navItem = document.querySelector('.sidebar-item[data-page="transacoes"]');
+    if (navItem) navItem.click();
+  });
+}
+
+function dashNavMonth(dir) {
+  const [y, m] = dashMonth.split('-').map(Number);
+  const d = new Date(y, m - 1 + dir, 1);
+  dashMonth = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+  updateDashMonthLabel();
+  loadDashboard();
+}
+
+function updateDashMonthLabel() {
+  const [y, m] = dashMonth.split('-').map(Number);
+  const names = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+  DOM.dashMonthLabel.textContent = names[m - 1] + ' ' + y;
+}
+
+function loadDashboard() {
+  if (dashController) dashController.abort();
+  dashController = new AbortController();
+  const signal = dashController.signal;
+
+  loadDashResumo(signal);
+  loadDashEvolucao(signal);
+  loadDashCategorias(signal);
+  loadDashContas(signal);
+  loadDashAlertas(signal);
+}
+
+async function loadDashResumo(signal) {
+  try {
+    const res = await fetch(API + '/financial/dashboard/resumo?mes=' + dashMonth, { signal });
+    const d = await res.json();
+    DOM.dashSaldoInicial.textContent = fmt(d.saldoInicial);
+    DOM.dashSaldoAtual.textContent = fmt(d.saldoAtual);
+    DOM.dashSaldoPrevisto.textContent = fmt(d.saldoPrevisto);
+    DOM.dashVisaoContas.textContent = fmt(d.saldoAtual);
+    DOM.dashVisaoReceitas.textContent = fmt(d.totalReceitas);
+    DOM.dashVisaoDespesas.textContent = fmt(d.totalDespesas);
+    DOM.dashVisaoTransferencias.textContent = fmt(d.balancoTransferencias);
+  } catch (e) {
+    if (e.name !== 'AbortError') console.error('dashResumo error:', e);
+  }
+}
+
+async function loadDashEvolucao(signal) {
+  try {
+    const res = await fetch(API + '/financial/dashboard/evolucao?mes=' + dashMonth, { signal });
+    const data = await res.json();
+    renderDashEvolucao(data);
+  } catch (e) {
+    if (e.name !== 'AbortError') console.error('dashEvolucao error:', e);
+  }
+}
+
+function renderDashEvolucao(data) {
+  if (dashChartEvolucao) dashChartEvolucao.destroy();
+  const ctx = DOM.dashChartEvolucao.getContext('2d');
+  const isDark = (document.documentElement.getAttribute('data-theme') || 'dark') === 'dark';
+  const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+  const textColor = isDark ? '#A1A1AA' : '#71717A';
+
+  const labels = data.map(d => { const p = d.data.split('-'); return p[2] + '/' + p[1]; });
+  const values = data.map(d => d.valor);
+
+  const gradient = ctx.createLinearGradient(0, 0, 0, ctx.canvas.clientHeight || 180);
+  gradient.addColorStop(0, 'rgba(239,68,68,0.25)');
+  gradient.addColorStop(1, 'rgba(239,68,68,0.02)');
+
+  dashChartEvolucao = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        borderColor: '#EF4444',
+        backgroundColor: gradient,
+        fill: true,
+        tension: 0.3,
+        pointRadius: 4,
+        pointBackgroundColor: '#EF4444',
+        pointBorderColor: isDark ? '#27272A' : '#FFFFFF',
+        pointBorderWidth: 2,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: { label: (ctx) => fmt(ctx.parsed.y) }
+        }
+      },
+      scales: {
+        x: { grid: { color: gridColor }, ticks: { color: textColor, font: { size: 11 } } },
+        y: {
+          grid: { color: gridColor },
+          ticks: {
+            color: textColor, font: { size: 11 },
+            callback: (v) => fmt(v)
+          }
+        }
+      }
+    }
+  });
+}
+
+async function loadDashCategorias(signal) {
+  try {
+    const res = await fetch(API + '/financial/dashboard/categorias?mes=' + dashMonth, { signal });
+    const data = await res.json();
+    renderDashCategorias(data);
+  } catch (e) {
+    if (e.name !== 'AbortError') console.error('dashCategorias error:', e);
+  }
+}
+
+function renderDashCategorias(data) {
+  if (dashChartCategorias) dashChartCategorias.destroy();
+
+  const total = data.reduce((s, d) => s + (d.total || 0), 0);
+  DOM.dashCatCenter.textContent = fmt(total);
+
+  if (!data.length) {
+    DOM.dashCatLegenda.innerHTML = '<span style="color:var(--text-muted);font-size:12px">Sem dados</span>';
+    return;
+  }
+
+  const ctx = DOM.dashChartCategorias.getContext('2d');
+  const isDark = (document.documentElement.getAttribute('data-theme') || 'dark') === 'dark';
+
+  dashChartCategorias = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: data.map(d => d.nome),
+      datasets: [{
+        data: data.map(d => d.total),
+        backgroundColor: data.map(d => d.cor || '#3F3F46'),
+        borderColor: isDark ? '#27272A' : '#FFFFFF',
+        borderWidth: 2,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '65%',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: { label: (ctx) => ctx.label + ': ' + fmt(ctx.parsed) }
+        }
+      }
+    }
+  });
+
+  DOM.dashCatLegenda.innerHTML = data.map(d =>
+    '<span class="dash-cat-legenda-item">' +
+    '<span class="dash-cat-legenda-dot" style="background:' + esc(d.cor || '#3F3F46') + '"></span>' +
+    esc(d.nome) +
+    '</span>'
+  ).join('');
+}
+
+async function loadDashContas(signal) {
+  try {
+    const res = await fetch(API + '/financial/dashboard/contas?mes=' + dashMonth, { signal });
+    const data = await res.json();
+    if (!data.length) {
+      DOM.dashContasBody.innerHTML = '<tr><td colspan="5"><div class="empty-state"><p>Nenhuma conta</p></div></td></tr>';
+      return;
+    }
+    DOM.dashContasBody.innerHTML = data.map(c =>
+      '<tr>' +
+      '<td>' + esc(c.nome) + '</td>' +
+      '<td class="valor-entrada">' + fmt(c.receitas) + '</td>' +
+      '<td class="valor-saida">' + fmt(c.despesas) + '</td>' +
+      '<td style="' + (c.saldo < 0 ? 'color:var(--color-red)' : '') + '">' + fmt(c.saldo) + '</td>' +
+      '<td style="' + (c.previsto < 0 ? 'color:var(--color-red)' : '') + '">' + fmt(c.previsto) + '</td>' +
+      '</tr>'
+    ).join('');
+  } catch (e) {
+    if (e.name !== 'AbortError') console.error('dashContas error:', e);
+  }
+}
+
+async function loadDashAlertas(signal) {
+  if (!signal) {
+    if (dashController) signal = dashController.signal;
+    else { dashController = new AbortController(); signal = dashController.signal; }
+  }
+  try {
+    const res = await fetch(API + '/financial/dashboard/alertas?mes=' + dashMonth + '&tipo=' + dashAlertaTipo, { signal });
+    const d = await res.json();
+    const tipo = dashAlertaTipo === 'despesa' ? 'despesas' : 'receitas';
+    DOM.dashAlertasText.textContent = 'Você tem ' + d.quantidade + ' ' + tipo + ' pendentes no total de ' + fmt(d.total);
+  } catch (e) {
+    if (e.name !== 'AbortError') console.error('dashAlertas error:', e);
+  }
+}
+
+
+// ================================================================
 //  DATE RANGE PICKER
 // ================================================================
 
@@ -936,6 +1177,7 @@ function selectDrMonth(m) {
   cacheDom();
   initTheme();
   initNavigation();
+  initDashboard();
   initTabs();
   initFilters();
   initLancamento();

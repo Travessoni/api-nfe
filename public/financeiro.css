@@ -715,3 +715,130 @@ textarea.form-input { height: 80px; padding: 10px 12px; resize: vertical }
   background: var(--color-green-soft); color: var(--color-green-text);
   border-color: var(--color-green-border); font-weight: 600;
 }
+
+
+/* =========================
+   DASHBOARD
+   ========================= */
+
+/* Month navigator */
+.dash-month-nav {
+  display: flex; align-items: center; gap: 8px;
+}
+.dash-month-label {
+  font-size: 15px; font-weight: 600; min-width: 140px;
+  text-align: center; color: var(--text-primary);
+}
+.dash-month-btn { padding: 6px 10px !important; min-height: auto !important; font-size: 16px !important }
+
+/* Rows */
+.dash-row { display: grid; gap: 16px; margin-bottom: 16px }
+.dash-row-3 { grid-template-columns: 280px 1fr 280px }
+.dash-row-2 { grid-template-columns: 1fr 320px }
+
+/* Card base */
+.dash-card {
+  background: var(--bg-card); border: 1px solid var(--border-default);
+  border-radius: 10px; padding: 20px;
+}
+.dash-card-title {
+  font-size: 14px; font-weight: 600; color: var(--text-primary);
+  margin-bottom: 16px;
+}
+
+/* Saldos card */
+.dash-saldos { display: flex; flex-direction: column; gap: 20px; justify-content: center }
+.dash-saldo-item { display: flex; align-items: center; gap: 12px }
+.dash-saldo-icon {
+  width: 36px; height: 36px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.dash-saldo-icon svg { width: 18px; height: 18px }
+.dash-saldo-icon-green { background: rgba(34,197,94,0.15); color: var(--color-green) }
+.dash-saldo-icon-blue { background: rgba(59,130,246,0.15); color: #3B82F6 }
+.dash-saldo-icon-gray { background: rgba(113,113,122,0.15); color: var(--text-muted) }
+.dash-saldo-value { font-size: 20px; font-weight: 700; color: var(--text-primary) }
+.dash-saldo-label { font-size: 12px; color: var(--text-secondary) }
+
+/* Chart card */
+.dash-chart-card { min-height: 220px; display: flex; flex-direction: column }
+.dash-chart-card canvas { flex: 1; min-height: 0 }
+
+/* Alertas card */
+.dash-alertas-card { display: flex; flex-direction: column }
+.dash-alertas-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border-default); margin: -20px -20px 16px; padding: 0 20px }
+.dash-alertas-tab {
+  padding: 10px 14px; font-size: 13px; color: var(--text-secondary);
+  cursor: pointer; border: none; background: none;
+  border-bottom: 2px solid transparent; font-weight: 500; font-family: inherit;
+}
+.dash-alertas-tab:hover { color: var(--text-primary) }
+.dash-alertas-tab.active { color: var(--text-primary); border-bottom-color: var(--text-primary) }
+.dash-alertas-body {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; text-align: center; gap: 12px;
+}
+.dash-alertas-icon { width: 40px; height: 40px; color: var(--color-orange); opacity: .7 }
+.dash-alertas-text { font-size: 13px; color: var(--text-secondary); line-height: 1.5 }
+.dash-alertas-btn { font-size: 12px !important }
+
+/* Visão Geral */
+.dash-visao-geral { display: flex; flex-direction: column }
+.dash-visao-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; flex: 1 }
+.dash-visao-card {
+  border-radius: 10px; padding: 16px;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 8px;
+}
+.dash-visao-card svg { width: 22px; height: 22px; opacity: .85 }
+.dash-visao-value { font-size: 20px; font-weight: 700 }
+.dash-visao-label { font-size: 12px; opacity: .8 }
+
+.dash-visao-blue { background: rgba(59,130,246,0.12); color: #3B82F6 }
+.dash-visao-green { background: rgba(34,197,94,0.12); color: var(--color-green) }
+.dash-visao-red { background: rgba(239,68,68,0.12); color: var(--color-red) }
+.dash-visao-orange { background: rgba(217,119,6,0.12); color: var(--color-orange) }
+
+/* Categorias donut */
+.dash-cat-card { display: flex; flex-direction: column }
+.dash-cat-chart-wrap {
+  position: relative; width: 180px; height: 180px;
+  margin: 0 auto 12px;
+}
+.dash-cat-chart-wrap canvas { width: 100% !important; height: 100% !important }
+.dash-cat-center {
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 16px; font-weight: 700; color: var(--text-primary);
+  pointer-events: none;
+}
+.dash-cat-legenda {
+  display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;
+}
+.dash-cat-legenda-item {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 11px; color: var(--text-secondary);
+}
+.dash-cat-legenda-dot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+}
+
+/* Skeleton loading */
+.dash-skeleton {
+  background: var(--bg-hover); border-radius: 6px;
+  animation: dashPulse 1.2s ease-in-out infinite;
+}
+@keyframes dashPulse {
+  0%, 100% { opacity: 1 }
+  50% { opacity: .4 }
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+  .dash-row-3 { grid-template-columns: 1fr }
+  .dash-row-2 { grid-template-columns: 1fr }
+  .dash-visao-grid { grid-template-columns: repeat(2, 1fr) }
+}
+@media (max-width: 768px) {
+  .dash-visao-grid { grid-template-columns: 1fr }
+  .dash-month-nav { flex-wrap: nowrap }
+}
