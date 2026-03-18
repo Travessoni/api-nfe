@@ -497,6 +497,206 @@ export class FinancialService implements OnModuleDestroy {
   }
 
   // ============================================================
+  // DASHBOARD
+  // ============================================================
+
+  /**
+   * Helper: retorna primeiro e último dia do mês no formato YYYY-MM-DD.
+   */
+  private monthRange(mes: string): { inicio: string; fim: string } {
+    const [y, m] = mes.split('-').map(Number);
+    const inicio = `${y}-${String(m).padStart(2, '0')}-01`;
+    const lastDay = new Date(y, m, 0).getDate();
+    const fim = `${y}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+    return { inicio, fim };
+  }
+
+  /**
+   * Dashboard resumo: saldos e totais do mês.
+   */
+  async getDashboardResumo(mes: string) {
+    const { inicio, fim } = this.monthRange(mes);
+
+    // Buscar todos os lançamentos do mês
+    const { data: lancamentos, error } = await this.getClient()
+      .from('caixas_e_bancos')
+      .select('tipo, valor')
+      .eq('estornado', false)
+      .gte('data', inicio)
+      .lte('data', fim);
+
+    if (error) throw new Error(`dashboard resumo: ${error.message}`);
+
+    let totalReceitas = 0;
+    let totalDespesas = 0;
+
+    for (const r of lancamentos ?? []) {
+      const v = Number(r.valor) || 0;
+      if (r.tipo === 'Entrada') totalReceitas += v;
+      else if (r.tipo === 'Saída') totalDespesas += v;
+    }
+
+    // Saldo atual = soma de todas as instituições
+    const { data: contas, error: contasError } = await this.getClient()
+      .from('financeiro_instituicoes')
+      .select('saldo');
+
+    if (contasError) throw new Error(`dashboard resumo contas: ${contasError.message}`);
+
+    const saldoAtual = (contas ?? []).reduce((s, c) => s + (Number(c.saldo) || 0), 0);
+    const saldoInicial = saldoAtual - totalReceitas + totalDespesas;
+    const saldoPrevisto = saldoAtual;
+
+    return {
+      saldoInicial,
+      saldoAtual,
+      saldoPrevisto,
+      totalReceitas,
+      totalDespesas,
+      balancoTransferencias: 0,
+    };
+  }
+
+  /**
+   * Dashboard evolução: despesas agrupadas por dia no mês.
+   */
+  async getDashboardEvolucao(mes: string) {
+    const { inicio, fim } = this.monthRange(mes);
+
+    const { data, error } = await this.getClient()
+      .from('caixas_e_bancos')
+      .select('data, valor')
+      .eq('estornado', false)
+      .eq('tipo', 'Saída')
+      .gte('data', inicio)
+      .lte('data', fim)
+      .order('data', { ascending: true });
+
+    if (error) throw new Error(`dashboard evolucao: ${error.message}`);
+
+    // Agrupar por dia
+    const byDay: Record<string, number> = {};
+    for (const r of data ?? []) {
+      byDay[r.data] = (byDay[r.data] || 0) + (Number(r.valor) || 0);
+    }
+
+    // Preencher todos os dias do mês
+    const [y, m] = mes.split('-').map(Number);
+    const daysInMonth = new Date(y, m, 0).getDate();
+    const result: { data: string; valor: number }[] = [];
+    for (let d = 1; d <= daysInMonth; d++) {
+      const ds = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      result.push({ data: ds, valor: byDay[ds] || 0 });
+    }
+
+    return result;
+  }
+
+  /**
+   * Dashboard categorias: despesas agrupadas por categoria no mês.
+   */
+  async getDashboardCategorias(mes: string) {
+    const { inicio, fim } = this.monthRange(mes);
+
+    const { data, error } = await this.getClient()
+      .from('caixas_e_bancos')
+      .select('valor, financeiro_categorias(id, nome, cor)')
+      .eq('estornado', false)
+      .eq('tipo', 'Saída')
+      .gte('data', inicio)
+      .lte('data', fim);
+
+    if (error) throw new Error(`dashboard categorias: ${error.message}`);
+
+    const byCategory: Record<string, { nome: string; cor: string; total: number }> = {};
+
+    for (const r of data ?? []) {
+      const cat = r.financeiro_categorias as Record<string, unknown> | null;
+      const key = cat ? (cat.id as string) : '__sem_categoria__';
+      const nome = cat ? (cat.nome as string) : 'Sem categoria';
+      const cor = cat ? (cat.cor as string) || '#3F3F46' : '#3F3F46';
+
+      if (!byCategory[key]) byCategory[key] = { nome, cor, total: 0 };
+      byCategory[key].total += Number(r.valor) || 0;
+    }
+
+    return Object.values(byCategory).sort((a, b) => b.total - a.total);
+  }
+
+  /**
+   * Dashboard contas: receitas, despesas e saldo por conta no mês.
+   */
+  async getDashboardContas(mes: string) {
+    const { inicio, fim } = this.monthRange(mes);
+
+    // Buscar todas as instituições
+    const { data: contas, error: contasError } = await this.getClient()
+      .from('financeiro_instituicoes')
+      .select('id, nome, saldo')
+      .order('nome', { ascending: true });
+
+    if (contasError) throw new Error(`dashboard contas: ${contasError.message}`);
+
+    // Buscar lançamentos do mês
+    const { data: lancamentos, error: lancError } = await this.getClient()
+      .from('caixas_e_bancos')
+      .select('contaBancaria, tipo, valor')
+      .eq('estornado', false)
+      .gte('data', inicio)
+      .lte('data', fim);
+
+    if (lancError) throw new Error(`dashboard contas lancamentos: ${lancError.message}`);
+
+    // Agrupar por conta
+    const contaMap: Record<string, { receitas: number; despesas: number }> = {};
+    for (const r of lancamentos ?? []) {
+      const key = r.contaBancaria;
+      if (!contaMap[key]) contaMap[key] = { receitas: 0, despesas: 0 };
+      const v = Number(r.valor) || 0;
+      if (r.tipo === 'Entrada') contaMap[key].receitas += v;
+      else if (r.tipo === 'Saída') contaMap[key].despesas += v;
+    }
+
+    return (contas ?? []).map(c => {
+      const mov = contaMap[c.id] || { receitas: 0, despesas: 0 };
+      return {
+        nome: c.nome,
+        receitas: mov.receitas,
+        despesas: mov.despesas,
+        saldo: Number(c.saldo) || 0,
+        previsto: Number(c.saldo) || 0,
+      };
+    });
+  }
+
+  /**
+   * Dashboard alertas: quantidade e total de lançamentos pendentes por tipo.
+   */
+  async getDashboardAlertas(mes: string, tipo: string) {
+    const { inicio, fim } = this.monthRange(mes);
+
+    const tipoLanc = tipo === 'receita' ? 'Entrada' : 'Saída';
+
+    const { data, error } = await this.getClient()
+      .from('caixas_e_bancos')
+      .select('valor')
+      .eq('estornado', false)
+      .eq('tipo', tipoLanc)
+      .gte('data', inicio)
+      .lte('data', fim);
+
+    if (error) throw new Error(`dashboard alertas: ${error.message}`);
+
+    const rows = data ?? [];
+    const total = rows.reduce((s, r) => s + (Number(r.valor) || 0), 0);
+
+    return {
+      quantidade: rows.length,
+      total,
+    };
+  }
+
+  // ============================================================
   // Helpers
   // ============================================================
 

@@ -117,6 +117,38 @@ export class FinancialController {
   }
 
   // ============================================================
+  // DASHBOARD
+  // ============================================================
+
+  @Get('dashboard/resumo')
+  getDashboardResumo(@Query('mes') mes: string) {
+    return this.financialService.getDashboardResumo(mes);
+  }
+
+  @Get('dashboard/evolucao')
+  getDashboardEvolucao(@Query('mes') mes: string) {
+    return this.financialService.getDashboardEvolucao(mes);
+  }
+
+  @Get('dashboard/categorias')
+  getDashboardCategorias(@Query('mes') mes: string) {
+    return this.financialService.getDashboardCategorias(mes);
+  }
+
+  @Get('dashboard/contas')
+  getDashboardContas(@Query('mes') mes: string) {
+    return this.financialService.getDashboardContas(mes);
+  }
+
+  @Get('dashboard/alertas')
+  getDashboardAlertas(
+    @Query('mes') mes: string,
+    @Query('tipo') tipo: string,
+  ) {
+    return this.financialService.getDashboardAlertas(mes, tipo || 'despesa');
+  }
+
+  // ============================================================
   // INSTITUIÇÕES (contas financeiras)
   // ============================================================
 
