@@ -191,7 +191,7 @@ export class FinancialService implements OnModuleDestroy {
 
     // 2. Criar registro invertido
     const tipoInvertido =
-      original.tipo === 'entrada' ? 'saida' : original.tipo === 'saida' ? 'entrada' : original.tipo;
+      original.tipo === 'Entrada' ? 'Saída' : original.tipo === 'Saída' ? 'Entrada' : original.tipo;
 
     const { data: estorno, error: insertError } = await this.getClient()
       .from('caixas_e_bancos')
@@ -238,7 +238,7 @@ export class FinancialService implements OnModuleDestroy {
         categoria: dto.categoria ?? null,
         data: dto.data,
         valor: dto.valor,
-        tipo: 'saida',
+        tipo: 'Saída',
         competencia: dto.competencia ?? dto.data,
         contaBancaria: dto.contaOrigem,
         historico: dto.historico ?? 'Transferência entre contas',
@@ -258,7 +258,7 @@ export class FinancialService implements OnModuleDestroy {
         categoria: dto.categoria ?? null,
         data: dto.data,
         valor: dto.valor,
-        tipo: 'entrada',
+        tipo: 'Entrada',
         competencia: dto.competencia ?? dto.data,
         contaBancaria: dto.contaDestino,
         historico: dto.historico ?? 'Transferência entre contas',
@@ -312,9 +312,9 @@ export class FinancialService implements OnModuleDestroy {
 
     for (const row of data ?? []) {
       const valor = Number(row.valor) || 0;
-      if (row.tipo === 'entrada') {
+      if (row.tipo === 'Entrada') {
         totalEntradas += valor;
-      } else if (row.tipo === 'saida') {
+      } else if (row.tipo === 'Saída') {
         totalSaidas += valor;
       }
     }
@@ -507,7 +507,7 @@ export class FinancialService implements OnModuleDestroy {
    */
   private async validarCategoriaCompativel(categoriaId: string, tipoLancamento: TipoLancamento) {
     const categoria = await this.findCategoriaById(categoriaId);
-    const tipoCategoria = (categoria as Record<string, unknown>)['tipo'] as string;
+    const tipoCategoria = (categoria as Record<string, unknown>)['tipo'] as string || '';
 
     const esperado: Record<string, string> = {
       [TipoLancamento.ENTRADA]: TipoCategoria.RECEITA,

@@ -7,8 +7,8 @@ import {
 } from 'class-validator';
 
 export enum TipoCategoria {
-  RECEITA = 'receita',
-  DESPESA = 'despesa',
+  RECEITA = 'Receita',
+  DESPESA = 'Despesa',
 }
 
 export class CreateCategoriaDto {
@@ -21,8 +21,8 @@ export class CreateCategoriaDto {
   cor?: string;
 
   @IsNotEmpty()
-  @IsEnum(TipoCategoria)
-  tipo!: TipoCategoria;
+  @IsString()
+  tipo!: string;
 
   @IsOptional()
   @IsUUID()

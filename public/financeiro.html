@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Financeiro — Grupo Betel</title>
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="financeiro.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <!-- AUTH GATE -->
+  <div id="authGate" class="auth-gate">
+    <h2>Financeiro — Grupo Betel</h2>
+    <div class="auth-form">
+      <input type="email" id="loginEmail" placeholder="E-mail" autocomplete="email">
+      <input type="password" id="loginPassword" placeholder="Senha" autocomplete="current-password">
+      <button class="btn-login" id="loginBtn">Entrar</button>
+      <div class="auth-error" id="authError"></div>
+    </div>
+  </div>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar" style="display:none">
+    <div class="sidebar-logo">BETEL<sup style="font-size:10px;color:var(--text-secondary)">+</sup></div>
+    <nav class="sidebar-nav">
+      <a class="sidebar-item" href="/painel">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+        Notas Fiscais
+      </a>
+      <div class="sidebar-group-label open" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">
+        Financeiro
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+      </div>
+      <div class="sidebar-group-items open">
+        <a class="sidebar-item active" href="#transacoes" data-page="transacoes">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+          Caixas e bancos
+        </a>
+        <a class="sidebar-item" href="#contas" data-page="contas">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 5c-1.5 0-2.8 1.4-3 2-3.5-1.5-11-.3-11 5 0 1.8 0 3 2 4.5V20h4v-2h3v2h4v-4c1-.5 1.7-1 2-2h2v-4h-2c0-1-.5-1.5-1-2"/><path d="M2 9v1c0 1.1.9 2 2 2h1"/></svg>
+          Contas financeiras
+        </a>
+        <a class="sidebar-item" href="#categorias" data-page="categorias">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>
+          Categorias
+        </a>
+      </div>
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="sidebar-user" id="sidebarUser">
+        <div class="sidebar-avatar" id="sidebarAvatar" style="background:#3F3F46">--</div>
+        <div class="sidebar-user-info">
+          <div class="name" id="sidebarName">—</div>
+          <div class="role" id="sidebarRole">—</div>
+        </div>
+      </div>
+      <button class="theme-toggle-btn" id="themeToggleBtn" title="Alternar tema">
+        <!-- Ícone lua (dark) / sol (light) — trocado via JS -->
+        <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+        <span id="themeLabel">Modo claro</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="main" id="mainContent" style="display:none">
+    <!-- PAGE: TRANSACOES (Caixas e bancos) -->
+    <div id="pageTransacoes" class="page-view">
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1>Caixas e bancos</h1>
+          <select class="select-conta" id="filterConta"><option value="">Todas contas</option></select>
+        </div>
+        <div class="page-header-right">
+          <button class="btn btn-ghost" id="btnTransferencia">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 16V4m0 0L3 8m4-4l4 4"/><path d="M17 8v12m0 0l4-4m-4 4l-4-4"/></svg>
+            Transferência entre contas
+          </button>
+          <button class="btn btn-green" id="btnNovoLancamento">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Incluir lançamento
+          </button>
+        </div>
+      </div>
+      <div class="summary-cards">
+        <div class="summary-card"><div class="summary-card-label">Entrada</div><div class="summary-card-value" id="totalEntrada">R$ 0,00</div></div>
+        <div class="summary-card"><div class="summary-card-label">Saída</div><div class="summary-card-value" id="totalSaida">R$ 0,00</div></div>
+      </div>
+      <div class="tabs">
+        <button class="tab active" data-tab="all">Movimentações</button>
+        <button class="tab" data-tab="Entrada">Entradas</button>
+        <button class="tab" data-tab="Saída">Saídas</button>
+      </div>
+      <div class="filters-row">
+        <div class="filter-chip">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/></svg>
+          Categoria
+          <select id="filterCategoria"><option value="">Todas categorias</option></select>
+        </div>
+        <div class="filter-chip" id="filterPeriodoBtn" onclick="openDrPicker()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          <span id="filterPeriodoLabel">Este mês</span>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table><thead><tr><th>Data</th><th>Categoria</th><th>Histórico</th><th>Conta</th><th>Valor</th><th></th></tr></thead><tbody id="lancamentosBody"></tbody></table>
+        <div class="pagination" id="lancamentosPagination"></div>
+      </div>
+    </div>
+
+    <!-- PAGE: CONTAS -->
+    <div id="pageContas" class="page-view" style="display:none">
+      <div class="page-header">
+        <div class="page-header-left"><h1>Contas financeiras</h1></div>
+        <div class="page-header-right"><button class="btn btn-green" id="btnNovaConta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Nova conta</button></div>
+      </div>
+      <div class="table-wrap"><table><thead><tr><th>Nome</th><th>Saldo</th><th></th></tr></thead><tbody id="contasBody"></tbody></table></div>
+    </div>
+
+    <!-- PAGE: CATEGORIAS -->
+    <div id="pageCategorias" class="page-view" style="display:none">
+      <div class="page-header">
+        <div class="page-header-left"><h1>Categorias financeiras</h1></div>
+        <div class="page-header-right"><button class="btn btn-green" id="btnNovaCategoria"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Nova categoria</button></div>
+      </div>
+      <div class="table-wrap"><table><thead><tr><th>Nome</th><th>Tipo</th><th>Cor</th><th></th></tr></thead><tbody id="categoriasBody"></tbody></table></div>
+    </div>
+  </main>
+
+  <!-- MODAL: LANCAMENTO -->
+  <div class="modal-overlay" id="modalLancamento">
+    <div class="modal">
+      <div class="modal-header"><h2>Lançamento caixa</h2><button class="modal-close" onclick="closeModal('modalLancamento')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+      <div class="modal-body">
+        <div class="form-group cat-selector">
+          <label>Categoria</label>
+          <input class="form-input" id="lancCatInput" placeholder="Buscar" readonly>
+          <input type="hidden" id="lancCatId">
+          <div class="cat-selector-dropdown" id="lancCatDropdown"></div>
+        </div>
+        <div class="form-row form-row-3">
+          <div class="form-group"><label>Data</label><input type="date" class="form-input" id="lancData"></div>
+          <div class="form-group"><label>Valor (R$)</label><input type="number" class="form-input" id="lancValor" placeholder="0,00" step="0.01" min="0"></div>
+          <div class="form-group"><label>Tipo</label><select class="form-input" id="lancTipo"><option value="Saída">Saída</option><option value="Entrada">Entrada</option></select></div>
+        </div>
+        <div class="form-row form-row-2">
+          <div class="form-group"><label>Competência</label><input type="date" class="form-input" id="lancCompetencia"></div>
+          <div class="form-group"><label>Conta financeira</label><select class="form-input" id="lancConta"><option value="">Selecione uma conta</option></select></div>
+        </div>
+        <div class="form-group"><label>Histórico</label><textarea class="form-input" id="lancHistorico" placeholder="Descrição do lançamento"></textarea></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-cancel" onclick="closeModal('modalLancamento')">Cancelar</button>
+        <button class="btn btn-red" id="btnSalvarLancamento">Adicionar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: TRANSFERENCIA -->
+  <div class="modal-overlay" id="modalTransferencia">
+    <div class="modal">
+      <div class="modal-header"><h2>Transferência entre contas</h2><button class="modal-close" onclick="closeModal('modalTransferencia')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+      <div class="modal-body">
+        <p style="color:var(--text-secondary);font-size:13px;margin-bottom:16px">A transferência será realizada somente utilizando o saldo entre as contas financeiras cadastradas.</p>
+        <div class="transfer-accounts">
+          <div class="transfer-account"><div class="form-group"><label>Conta Origem</label><select class="form-input" id="transOrigem"><option value="">Selecione uma conta</option></select></div><div class="saldo-hint" id="transOrigemSaldo">Saldo: R$ 0,00</div></div>
+          <div class="transfer-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></div>
+          <div class="transfer-account"><div class="form-group"><label>Conta Destino</label><select class="form-input" id="transDestino"><option value="">Selecione uma conta</option></select></div><div class="saldo-hint" id="transDestinoSaldo">Saldo: R$ 0,00</div></div>
+        </div>
+        <div class="form-row form-row-2">
+          <div class="form-group"><label>Valor</label><input type="number" class="form-input" id="transValor" placeholder="0,00" step="0.01" min="0"></div>
+          <div class="form-group"><label>Data da transferência</label><input type="date" class="form-input" id="transData"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-cancel" onclick="closeModal('modalTransferencia')">Cancelar</button>
+        <button class="btn btn-green" id="btnSalvarTransferencia" style="background:var(--color-orange)">Transferir</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div class="toast" id="toast"></div>
+
+  <!-- DATE RANGE PICKER -->
+  <div class="dr-overlay" id="drOverlay" onclick="drOverlayClick(event)">
+    <div class="dr-picker">
+      <div class="dr-calendars">
+        <div class="dr-cal">
+          <div class="dr-cal-header">
+            <button class="dr-nav" onclick="drNav('start',-1)">«</button>
+            <span id="drStartLabel" class="dr-cal-title"></span>
+            <button class="dr-nav" onclick="drNav('start',1)">»</button>
+          </div>
+          <div class="dr-weekdays"><span>Dom</span><span>Seg</span><span>Ter</span><span>Qua</span><span>Qui</span><span>Sex</span><span>Sab</span></div>
+          <div class="dr-days" id="drStartDays"></div>
+        </div>
+        <div class="dr-cal">
+          <div class="dr-cal-header">
+            <button class="dr-nav" onclick="drNav('end',-1)">«</button>
+            <span id="drEndLabel" class="dr-cal-title"></span>
+            <button class="dr-nav" onclick="drNav('end',1)">»</button>
+          </div>
+          <div class="dr-weekdays"><span>Dom</span><span>Seg</span><span>Ter</span><span>Qua</span><span>Qui</span><span>Sex</span><span>Sab</span></div>
+          <div class="dr-days" id="drEndDays"></div>
+        </div>
+        <!-- Month selector — inside .dr-calendars to keep flex layout -->
+        <div id="drMonthSel" class="dr-month-sel">
+          <div class="dr-month-year-nav">
+            <button onclick="drYearNav(-1)">«</button>
+            <span id="drMonthYear"></span>
+            <button onclick="drYearNav(1)">»</button>
+          </div>
+          <div class="dr-months" id="drMonthGrid"></div>
+        </div>
+        <div class="dr-presets">
+          <button class="dr-preset" data-preset="hoje">Hoje</button>
+          <button class="dr-preset" data-preset="semana">Esta semana</button>
+          <button class="dr-preset" data-preset="semana-passada">Semana passada</button>
+          <button class="dr-preset" data-preset="mes">Este mês</button>
+          <button class="dr-preset" data-preset="mes-passado">Mês passado</button>
+          <button class="dr-preset" data-preset="selecionar-mes">Selecionar mês</button>
+          <button class="dr-preset" data-preset="customizado">Período customizado</button>
+          <button class="dr-preset dr-preset-all" data-preset="todos">Todos</button>
+        </div>
+      </div>
+      <div class="dr-footer">
+        <div class="dr-range-display" id="drRangeDisplay"></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-cancel" onclick="closeDrPicker()">Cancelar</button>
+          <button class="btn btn-green" onclick="applyDr()">Filtrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="financeiro.js"></script>
+</body>
+</html>

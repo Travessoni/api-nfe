@@ -1,18 +1,18 @@
 import {
   IsUUID,
-  IsEnum,
   IsNotEmpty,
   IsNumber,
   IsOptional,
+  IsEnum,
   IsString,
   IsDateString,
   Min,
 } from 'class-validator';
 
 export enum TipoLancamento {
-  ENTRADA = 'entrada',
-  SAIDA = 'saida',
-  TRANSFERENCIA = 'transferencia',
+  ENTRADA = 'Entrada',
+  SAIDA = 'Saída',
+  TRANSFERENCIA = 'Transferência',
 }
 
 export class CreateLancamentoDto {

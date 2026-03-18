@@ -9,5 +9,11 @@ export class PainelController {
     const indexPath = join(process.cwd(), 'public', 'index.html');
     res.sendFile(indexPath);
   }
+
+  @Get('financeiro')
+  getFinanceiro(@Res() res: Response) {
+    const filePath = join(process.cwd(), 'public', 'financeiro.html');
+    res.sendFile(filePath);
+  }
 }
 
